@@ -31,7 +31,7 @@ step()  { printf '%s┃%s  %s▸%s %s\n' "$AC" "$AC" "$B" "$R" "$*"; }
 ok()    { printf '%s┃%s    %s✔%s %s\n' "$AC" "$AC" "$OK" "$R" "$*"; }
 warn()  { printf '%s┃%s    %s▲%s %s\n' "$AC" "$AC" "$WARN" "$R" "$*"; }
 die()   { printf '%s┗━✘ %s%s\n' "$ERR" "$*" "$R" >&2; exit 1; }
-done_() { printf '%s┻━%s %s✔ %s%s\n' "$AC" "$OK" "$*" "$R"; }
+done_() { printf '%s┻━ %s✔ %s%s\n' "$AC" "$OK" "$*" "$R"; }
 
 run() { if [ "$DRY" -eq 1 ]; then printf '      %s(dry) %s%s\n' "$D" "$*" "$R"; else "$@"; fi; }
 
@@ -79,7 +79,8 @@ FISH_BIN="$(command -v fish || echo /usr/bin/fish)"
 if [ "$(getent passwd "$USER" | cut -d: -f7)" != "$FISH_BIN" ]; then
     step "chsh -s $FISH_BIN $USER"
     run sudo chsh -s "$FISH_BIN" "$USER"
-    ok "fish is now the login shell (takes effect on the next login)"
+    [ "$DRY" -eq 0 ] && ok "fish is now the login shell (takes effect on the next login)" \
+        || printf '      %s(dry) chsh → fish%s\n' "$D" "$R"
 else
     ok "login shell already fish"
 fi
