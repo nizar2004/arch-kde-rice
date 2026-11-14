@@ -50,7 +50,7 @@ STAMP="$(date +%Y%m%d-%H%M%S)"
 
 title "Backing up the rice → $DOTFILES"
 printf '  %shost%s %s   %suser%s %s   %sbranch%s %s\n' \
-       "$D" "$R" "$(hostname)" "$D" "$R" "$USER" "$D" "$R" "$BRANCH"
+       "$D" "$R" "$(uname -n)" "$D" "$R" "$USER" "$D" "$R" "$BRANCH"
 
 # mirror <src> <repo-relative-dir-or-file>   (rsync keeps deletions in sync)
 mirror() {
@@ -112,7 +112,7 @@ mirror "$HOME/.local/share/plasma/desktoptheme/SmallTaskIcons" plasma/desktopthe
 
 # ── commit & push ─────────────────────────────────────────────────────────────
 title "Publishing"
-[ -z "$MSG" ] && MSG="backup: $(date '+%Y-%m-%d %H:%M:%S') on $(hostname)"
+[ -z "$MSG" ] && MSG="backup: $(date '+%Y-%m-%d %H:%M:%S') on $(uname -n)"
 
 git add -A
 if git diff --cached --quiet; then
