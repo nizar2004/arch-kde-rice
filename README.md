@@ -12,6 +12,27 @@
 
 ---
 
+## ⚡ One-command install
+
+On a fresh **Arch + KDE Plasma** install:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/nizar2004/arch-kde-rice/main/install.sh | bash
+```
+
+That clones the rice into `~/dotfiles`, links the global `backup` / `restore` commands into
+`/usr/local/bin`, then runs `restore` (it asks for your sudo password **once**).
+
+Only want the repo + commands, without rebuilding anything?
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/nizar2004/arch-kde-rice/main/install.sh | bash -s -- --no-restore
+```
+
+Other flags: `--dir <path>` (where to clone, default `~/dotfiles`), `--repo <url>`.
+
+---
+
 ## ✨ What this rice contains
 
 | Area | Details |
