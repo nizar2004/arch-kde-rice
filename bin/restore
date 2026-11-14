@@ -16,7 +16,15 @@ SELF="$(readlink -f "${BASH_SOURCE[0]}")"
 REPO_DEFAULT="$(cd "$(dirname "$SELF")/.." && pwd)"
 DOTFILES="${DOTFILES_DIR:-$REPO_DEFAULT}"
 DRY=0
-[ "${1:-}" = "--dry-run" ] && DRY=1
+
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --dry-run) DRY=1 ;;
+        -h|--help) sed -n '2,12p' "$SELF" | sed 's/^# \{0,1\}//'; exit 0 ;;
+        *) echo "restore: unknown option: $1 (try --help)" >&2; exit 2 ;;
+    esac
+    shift
+done
 
 # ── pretty output ─────────────────────────────────────────────────────────────
 if [ -t 1 ]; then
