@@ -84,11 +84,27 @@ fi
 command -v oh-my-posh >/dev/null 2>&1 && ok "oh-my-posh: $(oh-my-posh version 2>/dev/null || echo present)"
 
 FISH_BIN="$(command -v fish || echo /usr/bin/fish)"
+
+# 1) register fish in /etc/shells — without this, usermod/chsh are silently
+#    ignored by login managers and terminal emulators
+if ! grep -qxF "$FISH_BIN" /etc/shells 2>/dev/null; then
+    step "register $FISH_BIN in /etc/shells"
+    run sudo sh -c "printf '%s\\n' '$FISH_BIN' >> /etc/shells"
+    ok "/etc/shells updated"
+else
+    ok "$FISH_BIN already in /etc/shells"
+fi
+
+# 2) force the account login shell for ALL terminals (Konsole, Alacritty, TTYs,
+#    VS Code …). usermod is used because chsh can be silently ignored.
 if [ "$(getent passwd "$USER" | cut -d: -f7)" != "$FISH_BIN" ]; then
-    step "chsh -s $FISH_BIN $USER"
-    run sudo chsh -s "$FISH_BIN" "$USER"
-    [ "$DRY" -eq 0 ] && ok "fish is now the login shell (takes effect on the next login)" \
-        || printf '      %s(dry) chsh → fish%s\n' "$D" "$R"
+    step "usermod -s $FISH_BIN $USER"
+    run sudo usermod -s "$FISH_BIN" "$USER"
+    if [ "$DRY" -eq 0 ]; then
+        ok "login shell is now $(getent passwd "$USER" | cut -d: -f7)"
+    else
+        printf '      %s(dry) usermod → fish%s\n' "$D" "$R"
+    fi
 else
     ok "login shell already fish"
 fi
@@ -122,6 +138,8 @@ deploy_tree config/fish        "$HOME/.config/fish"
 deploy_tree config/oh-my-posh  "$HOME/.config/oh-my-posh"
 deploy_tree config/ghostty     "$HOME/.config/ghostty"
 deploy_tree config/fastfetch   "$HOME/.config/fastfetch"
+deploy_tree config/konsole     "$HOME/.local/share/konsole"   # Konsole profile → Command=/usr/bin/fish
+deploy_tree config/konsolerc   "$HOME/.config/konsolerc"      # default profile selection
 
 # ── Phase 3: wallpapers & slideshow ───────────────────────────────────────────
 phase "Phase 3 · wallpapers & slideshow"
@@ -133,23 +151,7 @@ if [ "$DRY" -eq 0 ]; then
 fi
 ok "$(find "$WALL_DIR" -maxdepth 1 -type f 2>/dev/null | wc -l) wallpaper(s) in place"
 
-step "switching Plasma's desktop wallpaper to a Slideshow of that folder"
-if [ "$DRY" -eq 0 ] && command -v qdbus6 >/dev/null 2>&1 && \
-   qdbus6 org.kde.plasmashell /PlasmaShell >/dev/null 2>&1; then
-    qdbus6 org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript "
-        var dir = '/home/$USER/Pictures/Wallpapers/';
-        var ds = desktops();
-        for (var i = 0; i < ds.length; i++) {
-            ds[i].wallpaperPlugin = 'org.kde.slideshow';
-            ds[i].currentConfigGroup = ['Wallpaper', 'org.kde.slideshow', 'General'];
-            ds[i].writeConfig('SlidePaths', dir);
-            ds[i].writeConfig('SlideInterval', 1800);
-        }
-    " >/dev/null 2>&1 && ok "slideshow configured (org.kde.slideshow)" \
-      || warn "could not script plasmashell — the layout step below also sets this"
-else
-    printf '      %s(dry) evaluateScript: set org.kde.slideshow → %s%s\n' "$D" "$WALL_DIR" "$R"
-fi
+warn "the slideshow is applied in Phase 4, after the Plasma config is deployed"
 
 # ── Phase 4: Plasma UI & layout ───────────────────────────────────────────────
 phase "Phase 4 · Plasma UI, panels & taskbar icons"
@@ -192,6 +194,47 @@ for f in "$DOTFILES"/plasma/config/*; do
 done
 [ -d "$DOTFILES/plasma/config/kdedefaults" ] && deploy_tree plasma/config/kdedefaults "$HOME/.config/kdedefaults"
 ok "plasma config restored"
+
+# ── wallpaper slideshow ───────────────────────────────────────────────────────
+step "wallpaper: every desktop → org.kde.slideshow ($WALL_DIR)"
+APP="plasma-org.kde.plasma.desktop-appletsrc"
+WALL_URL="file:///home/$USER/Pictures/Wallpapers"
+if [ "$DRY" -eq 0 ]; then
+    # every desktop containment (folder / desktopcontainment) gets the slideshow
+    IDS="$(awk '
+        /^\[Containments\]\[[0-9]+\]$/ { id=$0; sub(/^\[Containments\]\[/,"",id); sub(/\]$/,"",id) }
+        /^plugin=org\.kde\.plasma\.folder|^plugin=org\.kde\.desktopcontainment/ { print id }
+    ' "$HOME/.config/$APP" | sort -u)"
+    for id in $IDS; do
+        kwriteconfig6 --file "$APP" --group Containments --group "$id" --key wallpaperplugin org.kde.slideshow
+        kwriteconfig6 --file "$APP" --group Containments --group "$id" --group Wallpaper \
+                      --group org.kde.slideshow --group General --key SlidePaths "$WALL_URL"
+        kwriteconfig6 --file "$APP" --group Containments --group "$id" --group Wallpaper \
+                      --group org.kde.slideshow --group General --key SlideInterval 1800
+    done
+    ok "set org.kde.slideshow on containment(s): $(echo $IDS | tr '\n' ' ')"
+else
+    printf '      %s(dry) kwriteconfig6: wallpaperplugin=org.kde.slideshow + SlidePaths=%s%s\n' "$D" "$WALL_URL" "$R"
+fi
+
+step "applying the wallpaper live via org.kde.PlasmaShell.evaluateScript"
+if [ "$DRY" -eq 0 ] && command -v qdbus6 >/dev/null 2>&1 && \
+   qdbus6 org.kde.plasmashell /PlasmaShell >/dev/null 2>&1; then
+    qdbus6 org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript "
+        var dir = '$WALL_URL';
+        var ds = desktops();
+        for (var i = 0; i < ds.length; i++) {
+            ds[i].wallpaperPlugin = 'org.kde.slideshow';
+            ds[i].currentConfigGroup = ['Wallpaper', 'org.kde.slideshow', 'General'];
+            ds[i].writeConfig('SlidePaths', dir);
+            ds[i].writeConfig('SlideInterval', 1800);
+            if (ds[i].reloadConfig) { ds[i].reloadConfig(); }
+        }
+    " >/dev/null 2>&1 && ok "slideshow applied to $(qdbus6 org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript 'print(desktops().length)' 2>/dev/null) desktop(s)" \
+      || warn "could not script plasmashell now — it applies on the next plasmashell restart"
+else
+    printf '      %s(dry) evaluateScript: desktops() → org.kde.slideshow%s\n' "$D" "$R"
+fi
 
 # enforce the taskbar icon size explicitly
 step "enforcing taskbar icon size 29"

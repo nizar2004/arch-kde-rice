@@ -29,9 +29,13 @@ lastResolution=1829x1143
 positions={"1371x771":["1","3","desktop:/l9ard 7mar","4","6","desktop:/steam.desktop","0","0"],"1829x1143":["1","4","desktop:/l9ard 7mar","4","6","desktop:/steam.desktop","0","0"]}
 sortMode=-1
 
+[Containments][1][Wallpaper][org.kde.color][General]
+Color=0,0,0
+
 [Containments][1][Wallpaper][org.kde.slideshow][General]
-Image=file:///home/nizar/Pictures/Wallpapers/__upscaled_upscaled.jpeg
-SlidePaths=/home/nizar/Pictures/Wallpapers/
+Image=file:///home/nizar/Pictures/Wallpapers/Cat.jpg
+SlideInterval=1800
+SlidePaths=file:///home/nizar/Pictures/Wallpapers
 
 [Containments][2]
 activityId=
@@ -217,7 +221,11 @@ immutability=1
 lastScreen=1
 location=0
 plugin=org.kde.plasma.folder
-wallpaperplugin=org.kde.image
+wallpaperplugin=org.kde.slideshow
+
+[Containments][34][Wallpaper][org.kde.slideshow][General]
+SlideInterval=1800
+SlidePaths=file:///home/nizar/Pictures/Wallpapers
 
 [Containments][35]
 activityId=

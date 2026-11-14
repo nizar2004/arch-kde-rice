@@ -77,6 +77,8 @@ mirror "$HOME/.config/fish"      config/fish
 mirror "$HOME/.config/oh-my-posh" config/oh-my-posh
 mirror "$HOME/.config/ghostty"   config/ghostty
 mirror "$HOME/.config/fastfetch" config/fastfetch
+mirror "$HOME/.local/share/konsole" config/konsole   # Konsole profile (Command=/usr/bin/fish)
+copyfile "$HOME/.config/konsolerc"  config/konsolerc  # points Konsole at that profile
 
 # ── fonts ─────────────────────────────────────────────────────────────────────
 title "Fonts"

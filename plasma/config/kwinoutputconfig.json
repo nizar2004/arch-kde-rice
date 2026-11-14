@@ -146,7 +146,7 @@
                 "lidClosed": false,
                 "outputs": [
                     {
-                        "enabled": true,
+                        "enabled": false,
                         "outputIndex": 0,
                         "position": {
                             "x": 0,
@@ -156,7 +156,7 @@
                         "replicationSource": ""
                     },
                     {
-                        "enabled": false,
+                        "enabled": true,
                         "outputIndex": 1,
                         "position": {
                             "x": 0,
