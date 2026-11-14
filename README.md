@@ -40,8 +40,8 @@ Other flags: `--dir <path>` (where to clone, default `~/dotfiles`), `--repo <url
 | 🖥️ **Panels** | Two **vertical** panels — the main taskbar/launcher panel plus a quick-launch icon panel — captured from `plasma-org.kde.plasma.desktop-appletsrc`. |
 | 🕰️ **Custom widgets** | `com.cyberbessa.verticalclock` (vertical clock) and `com.nizar.dashboard` (custom start menu). |
 | 📏 **Small taskbar icons** | Taskbar icons are forced to **29 px** with the `SmallTaskIcons` Plasma theme (a `widgets/tasks.svgz` margin-hint override) — the panel thickness is never touched. |
-| 🐟 **Shell** | **fish** as login shell, **oh-my-posh** prompt (`nizar-simple.omp.json`) + custom functions. |
-| 🖥️ **Terminal** | **Ghostty** config (Tokyo Night-ish palette, Meslo Nerd Font). |
+| 🐟 **Shell** | **fish** as the real login shell (`usermod -s /usr/bin/fish` + registered in `/etc/shells`), so **every** terminal — Konsole, Alacritty, TTYs, VS Code — starts fish. **oh-my-posh** prompt (`nizar-simple.omp.json`) + custom functions. |
+| 🖥️ **Terminal** | **Ghostty** config (Tokyo Night-ish palette, Meslo Nerd Font) **and** a **Konsole** profile with `Command=/usr/bin/fish`. |
 | ⚡ **Fetch** | Custom **fastfetch** profile. |
 | 🖼️ **Wallpapers** | `~/Pictures/Wallpapers/` wired to Plasma's **Slideshow** engine. |
 
@@ -107,6 +107,31 @@ sudo ln -sf ~/dotfiles/bin/backup  /usr/local/bin/backup
 sudo ln -sf ~/dotfiles/bin/restore /usr/local/bin/restore
 restore
 ```
+
+## 🖼️ Wallpaper slideshow
+
+`restore` finds every desktop containment (`org.kde.plasma.folder`) in
+`plasma-org.kde.plasma.desktop-appletsrc`, sets it to **`org.kde.slideshow`** with
+`SlidePaths=file:///home/$USER/Pictures/Wallpapers` via `kwriteconfig6`, then applies it live with
+`org.kde.PlasmaShell.evaluateScript` (`desktops()[i].wallpaperPlugin = 'org.kde.slideshow'`).
+Verify any time with:
+
+```bash
+qdbus6 org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript \
+  'var d=desktops(); print(JSON.stringify(d.map(function(x){return x.wallpaperPlugin})))'
+```
+
+## 🐟 Fish everywhere (not just Ghostty)
+
+`restore` Phase 1 does all three steps so fish is the *system* shell:
+
+```bash
+grep -qxF "$(command -v fish)" /etc/shells || echo "$(command -v fish)" | sudo tee -a /etc/shells
+sudo usermod -s "$(command -v fish)" "$USER"
+# plus a Konsole profile with Command=/usr/bin/fish  (config/konsole + config/konsolerc)
+```
+
+Log out and back in once for the shell change to reach the current session.
 
 ## 📐 How the 29 px taskbar icons work
 
