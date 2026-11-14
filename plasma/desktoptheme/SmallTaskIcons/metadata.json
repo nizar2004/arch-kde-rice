@@ -1,0 +1,19 @@
+{
+    "KPlugin": {
+        "Authors": [
+            {
+                "Email": "nizar@localhost",
+                "Name": "Nizar"
+            }
+        ],
+        "Category": "",
+        "Description": "Breeze with smaller taskbar icons: enlarged tasks.svg margin hints shrink icon size while the panel thickness stays unchanged. Everything else falls back to the default theme.",
+        "EnabledByDefault": true,
+        "Id": "SmallTaskIcons",
+        "License": "LGPL",
+        "Name": "Small Task Icons",
+        "Version": "1.0",
+        "Website": "https://kde.org"
+    },
+    "X-Plasma-API": "5.0"
+}

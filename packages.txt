@@ -1,0 +1,11 @@
+# Arch packages installed by `restore` (phase 1)
+fish
+fastfetch
+ghostty
+ttf-meslo-nerd
+git
+curl
+unzip
+fontconfig
+rsync
+# oh-my-posh is installed from its official installer (or AUR: oh-my-posh-bin)

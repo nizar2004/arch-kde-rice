@@ -1,0 +1,229 @@
+#!/usr/bin/env bash
+# =============================================================================
+#  restore — rebuild this Arch + KDE Plasma rice on a fresh install
+#
+#  Phase 0  sanity + one sudo prompt
+#  Phase 1  packages, oh-my-posh, fish as the login shell
+#  Phase 2  fonts + terminal configs (fish, oh-my-posh, ghostty, fastfetch)
+#  Phase 3  wallpapers + Plasma slideshow engine
+#  Phase 4  Plasma UI: widgets, vertical panel layout, taskbar icon size 29
+#
+#  Usage:  restore [--dry-run]
+# =============================================================================
+set -euo pipefail
+
+SELF="$(readlink -f "${BASH_SOURCE[0]}")"
+REPO_DEFAULT="$(cd "$(dirname "$SELF")/.." && pwd)"
+DOTFILES="${DOTFILES_DIR:-$REPO_DEFAULT}"
+DRY=0
+[ "${1:-}" = "--dry-run" ] && DRY=1
+
+# ── pretty output ─────────────────────────────────────────────────────────────
+if [ -t 1 ]; then
+    B=$'\e[1m'; R=$'\e[0m'; D=$'\e[2m'
+    AC=$'\e[38;5;39m'; OK=$'\e[38;5;42m'; WARN=$'\e[38;5;214m'
+    ERR=$'\e[38;5;203m'; T=$'\e[38;5;170m'
+else
+    B=; R=; D=; AC=; OK=; WARN=; ERR=; T=
+fi
+phase() { printf '\n%s┳━ %s%s%s\n' "$T" "$B" "$*" "$R"; }
+step()  { printf '%s┃%s  %s▸%s %s\n' "$AC" "$AC" "$B" "$R" "$*"; }
+ok()    { printf '%s┃%s    %s✔%s %s\n' "$AC" "$AC" "$OK" "$R" "$*"; }
+warn()  { printf '%s┃%s    %s▲%s %s\n' "$AC" "$AC" "$WARN" "$R" "$*"; }
+die()   { printf '%s┗━✘ %s%s\n' "$ERR" "$*" "$R" >&2; exit 1; }
+done_() { printf '%s┻━%s %s✔ %s%s\n' "$AC" "$OK" "$*" "$R"; }
+
+run() { if [ "$DRY" -eq 1 ]; then printf '      %s(dry) %s%s\n' "$D" "$*" "$R"; else "$@"; fi; }
+
+# ── Phase 0: sanity + sudo ────────────────────────────────────────────────────
+phase "Phase 0 · sanity & privileges"
+[ -d "$DOTFILES" ] || die "dotfiles repo not found at $DOTFILES"
+[ "$(id -u)" -ne 0 ] || die "run this as your normal user, not root"
+STAMP="$(date +%Y%m%d-%H%M%S)"
+ORIGIN_USER="$(cat "$DOTFILES/plasma/.origin-user" 2>/dev/null || echo "$USER")"
+ok "repo:    $DOTFILES"
+ok "user:    $USER  (config from /home/$ORIGIN_USER)"
+
+if [ "$DRY" -eq 1 ]; then
+    warn "--dry-run: nothing will be changed"
+else
+    step "asking for sudo once (used for packages, fonts, chsh, /usr/local/bin)"
+    sudo -v || die "sudo was not granted"
+    # keep the sudo timestamp warm during long installs
+    ( while true; do sudo -n true 2>/dev/null || exit; sleep 50; done ) & SUDO_KEEP=$!
+    trap 'kill "$SUDO_KEEP" 2>/dev/null || true' EXIT
+fi
+
+# ── Phase 1: dependencies & shell ─────────────────────────────────────────────
+phase "Phase 1 · dependencies & default shell"
+PKGS=(fish fastfetch ghostty ttf-meslo-nerd git curl unzip fontconfig rsync)
+step "pacman -S --needed ${PKGS[*]}"
+run sudo pacman -S --needed --noconfirm "${PKGS[@]}"
+ok "core packages present"
+
+if ! command -v oh-my-posh >/dev/null 2>&1; then
+    step "installing oh-my-posh"
+    if command -v yay >/dev/null 2>&1; then
+        run yay -S --needed --noconfirm oh-my-posh-bin || warn "yay failed, trying the official installer"
+    elif command -v paru >/dev/null 2>&1; then
+        run paru -S --needed --noconfirm oh-my-posh-bin || warn "paru failed, trying the official installer"
+    fi
+    if ! command -v oh-my-posh >/dev/null 2>&1 && [ "$DRY" -eq 0 ]; then
+        curl -fsSL https://ohmyposh.dev/install.sh | sudo bash -s -- -d /usr/local/bin \
+            || warn "oh-my-posh install failed — install it manually later"
+    fi
+fi
+command -v oh-my-posh >/dev/null 2>&1 && ok "oh-my-posh: $(oh-my-posh version 2>/dev/null || echo present)"
+
+FISH_BIN="$(command -v fish || echo /usr/bin/fish)"
+if [ "$(getent passwd "$USER" | cut -d: -f7)" != "$FISH_BIN" ]; then
+    step "chsh -s $FISH_BIN $USER"
+    run sudo chsh -s "$FISH_BIN" "$USER"
+    ok "fish is now the login shell (takes effect on the next login)"
+else
+    ok "login shell already fish"
+fi
+
+# ── Phase 2: fonts & terminal configs ─────────────────────────────────────────
+phase "Phase 2 · fonts & terminal configuration"
+
+if [ -n "$(ls -A "$DOTFILES/fonts" 2>/dev/null | grep -v '^\.gitkeep$' || true)" ]; then
+    step "deploying user fonts → ~/.local/share/fonts"
+    run mkdir -p "$HOME/.local/share/fonts"
+    run cp -a "$DOTFILES/fonts/." "$HOME/.local/share/fonts/"
+    run fc-cache -f
+    ok "custom fonts installed"
+else
+    warn "no custom font files in the repo (Meslo Nerd Font comes from ttf-meslo-nerd)"
+fi
+
+deploy_tree() { # <repo-relative> <destination>
+    local src="$DOTFILES/$1" dst="$2"
+    [ -e "$src" ] || { warn "missing in repo: $1"; return 0; }
+    step "${dst/#$HOME/~}"
+    if [ "$DRY" -eq 0 ]; then
+        mkdir -p "$(dirname "$dst")"
+        [ -e "$dst" ] && mv "$dst" "$dst.bak.$STAMP"
+        cp -a "$src" "$dst"
+    fi
+    ok "restored ${dst/#$HOME/~}"
+}
+
+deploy_tree config/fish        "$HOME/.config/fish"
+deploy_tree config/oh-my-posh  "$HOME/.config/oh-my-posh"
+deploy_tree config/ghostty     "$HOME/.config/ghostty"
+deploy_tree config/fastfetch   "$HOME/.config/fastfetch"
+
+# ── Phase 3: wallpapers & slideshow ───────────────────────────────────────────
+phase "Phase 3 · wallpapers & slideshow"
+WALL_DIR="$HOME/Pictures/Wallpapers"
+step "$WALL_DIR"
+if [ "$DRY" -eq 0 ]; then
+    mkdir -p "$WALL_DIR"
+    cp -a "$DOTFILES/wallpapers/." "$WALL_DIR/" 2>/dev/null || true
+fi
+ok "$(find "$WALL_DIR" -maxdepth 1 -type f 2>/dev/null | wc -l) wallpaper(s) in place"
+
+step "switching Plasma's desktop wallpaper to a Slideshow of that folder"
+if [ "$DRY" -eq 0 ] && command -v qdbus6 >/dev/null 2>&1 && \
+   qdbus6 org.kde.plasmashell /PlasmaShell >/dev/null 2>&1; then
+    qdbus6 org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript "
+        var dir = '/home/$USER/Pictures/Wallpapers/';
+        var ds = desktops();
+        for (var i = 0; i < ds.length; i++) {
+            ds[i].wallpaperPlugin = 'org.kde.slideshow';
+            ds[i].currentConfigGroup = ['Wallpaper', 'org.kde.slideshow', 'General'];
+            ds[i].writeConfig('SlidePaths', dir);
+            ds[i].writeConfig('SlideInterval', 1800);
+        }
+    " >/dev/null 2>&1 && ok "slideshow configured (org.kde.slideshow)" \
+      || warn "could not script plasmashell — the layout step below also sets this"
+else
+    printf '      %s(dry) evaluateScript: set org.kde.slideshow → %s%s\n' "$D" "$WALL_DIR" "$R"
+fi
+
+# ── Phase 4: Plasma UI & layout ───────────────────────────────────────────────
+phase "Phase 4 · Plasma UI, panels & taskbar icons"
+
+step "custom widgets (vertical clock, custom start menu)"
+for p in "$DOTFILES"/plasma/data/plasmoids/*/; do
+    [ -d "$p" ] || continue
+    name="$(basename "$p")"
+    if [ "$DRY" -eq 0 ]; then
+        mkdir -p "$HOME/.local/share/plasma/plasmoids"
+        rm -rf "$HOME/.local/share/plasma/plasmoids/$name"
+        cp -a "$p" "$HOME/.local/share/plasma/plasmoids/$name"
+    fi
+    ok "widget: $name"
+done
+
+step "panel launcher icons"
+if [ "$DRY" -eq 0 ]; then mkdir -p "$HOME/.local/share/plasma_icons"; fi
+run cp -a "$DOTFILES/plasma/data/plasma_icons/." "$HOME/.local/share/plasma_icons/"
+ok "launcher icons restored"
+
+step "small-taskbar-icon theme (taskbar icons = 29 px)"
+if [ "$DRY" -eq 0 ]; then
+    mkdir -p "$HOME/.local/share/plasma/desktoptheme"
+    rm -rf "$HOME/.local/share/plasma/desktoptheme/SmallTaskIcons"
+    cp -a "$DOTFILES/plasma/desktoptheme/SmallTaskIcons" "$HOME/.local/share/plasma/desktoptheme/"
+fi
+ok "theme SmallTaskIcons installed"
+
+step "Plasma configuration files (layout, panels, shortcuts, theme)"
+for f in "$DOTFILES"/plasma/config/*; do
+    [ -f "$f" ] || continue
+    base="$(basename "$f")"
+    if [ "$DRY" -eq 0 ]; then
+        [ -e "$HOME/.config/$base" ] && cp -a "$HOME/.config/$base" "$HOME/.config/$base.bak.$STAMP"
+        cp -a "$f" "$HOME/.config/$base"
+        # make the captured layout belong to whoever runs this restore
+        [ "$ORIGIN_USER" != "$USER" ] && sed -i "s#/home/$ORIGIN_USER#/home/$USER#g" "$HOME/.config/$base" || true
+    fi
+done
+[ -d "$DOTFILES/plasma/config/kdedefaults" ] && deploy_tree plasma/config/kdedefaults "$HOME/.config/kdedefaults"
+ok "plasma config restored"
+
+# enforce the taskbar icon size explicitly
+step "enforcing taskbar icon size 29"
+KW="$(command -v kwriteconfig6 || command -v kwriteconfig5 || true)"
+if [ -n "$KW" ]; then
+    # the icon size is produced by the theme's margin hints (panel thickness is
+    # untouched); selecting the theme is what applies 29 px.
+    run "$KW" --file plasmarc --group Theme --key name SmallTaskIcons
+    # belt & braces: some builds also honour an explicit iconSize on icontasks
+    run "$KW" --file plasma-org.kde.plasma.desktop-appletsrc \
+        --group Containments --group 2 --group Applets --group 33 \
+        --group Configuration --group General --key iconSize 29
+    ok "plasmarc Theme=SmallTaskIcons, icontasks iconSize=29"
+else
+    warn "kwriteconfig6 not found; theme name must be set manually"
+fi
+
+# restart plasmashell cleanly (clear any failed/rate-limited state first)
+restart_plasmashell() {
+    local unit="plasma-plasmashell.service"
+    if systemctl --user list-unit-files 2>/dev/null | grep -q "^${unit}"; then
+        systemctl --user reset-failed "$unit" 2>/dev/null || true
+        systemctl --user restart "$unit" 2>/dev/null || { sleep 2; systemctl --user start "$unit"; }
+        for _ in $(seq 1 60); do
+            [ "$(systemctl --user is-active "$unit" 2>/dev/null)" = "active" ] && return 0
+            sleep 0.5
+        done
+        return 1
+    fi
+    pkill -x plasmashell 2>/dev/null || true
+    sleep 2
+    ( setsid plasmashell >/dev/null 2>&1 & )
+}
+step "restarting plasmashell"
+if [ "$DRY" -eq 0 ]; then restart_plasmashell && ok "plasmashell is running"; else printf '      %s(dry) restart plasmashell%s\n' "$D" "$R"; fi
+
+# ── install the global commands ───────────────────────────────────────────────
+phase "Phase 5 · global commands"
+for c in backup restore; do
+    run sudo ln -sf "$DOTFILES/bin/$c" "/usr/local/bin/$c"
+    ok "/usr/local/bin/$c → $DOTFILES/bin/$c"
+done
+
+done_ "Restore complete — log out and back in so fish (and the panel) fully apply."

@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kcfg xmlns="http://www.kde.org/standards/kcfg/1.0"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:schemaLocation="http://www.kde.org/standards/kcfg/1.0
+                          http://www.kde.org/standards/kcfg/1.0/kcfg.xsd">
+
+    <kcfgfile name=""/>
+
+    <group name="General">
+
+        <!-- One of the eight styles. The default stacks the hour over the
+             minute with a weight contrast and an accent rule between them. -->
+        <entry name="clockStyle" type="String">
+            <default>stackedHierarchy</default>
+        </entry>
+
+        <!-- Spine styles only: true rotates clockwise and reads top to bottom. -->
+        <entry name="spineTopToBottom" type="Bool">
+            <default>true</default>
+        </entry>
+
+        <!-- Block styles only: neutral, white, gray, black, blue, orange, yellow. -->
+        <entry name="blockColor" type="String">
+            <default>neutral</default>
+        </entry>
+
+        <entry name="showDate" type="Bool">
+            <default>true</default>
+        </entry>
+
+        <entry name="showWeekday" type="Bool">
+            <default>false</default>
+        </entry>
+
+        <!-- Qt.formatDate pattern: d = day, MMM = short month, ddd = weekday. -->
+        <entry name="dateFormat" type="String">
+            <default>d MMM</default>
+        </entry>
+
+        <!-- Date height as a percentage of the digit height. On a narrow panel
+             the date is width-bound, so this is the knob that makes it legible. -->
+        <entry name="dateScale" type="Int">
+            <default>45</default>
+        </entry>
+
+        <!-- Makes the clock wake every second instead of every minute. -->
+        <entry name="showSeconds" type="Bool">
+            <default>false</default>
+        </entry>
+
+        <entry name="use24Hour" type="Bool">
+            <default>true</default>
+        </entry>
+
+        <!-- Ornament: rule under the digits that fills as time passes. -->
+        <entry name="showProgressUnderline" type="Bool">
+            <default>false</default>
+        </entry>
+
+        <!-- What the underline tracks: hour or day. -->
+        <entry name="progressPeriod" type="String">
+            <default>hour</default>
+        </entry>
+
+        <!-- Ornament: hairline above the clock, separating it from the tray. -->
+        <entry name="showTopSeparator" type="Bool">
+            <default>false</default>
+        </entry>
+
+        <!-- Ornament: accent dot that blinks once a second. -->
+        <entry name="blinkSeparator" type="Bool">
+            <default>false</default>
+        </entry>
+
+        <!-- Calendar popup. Names and defaults match the built-in digital
+             clock's, so the settings read the same way to anyone who has used
+             it. -1 follows the locale; 0 is Sunday, 1 Monday, and so on. -->
+        <entry name="showWeekNumbers" type="Bool">
+            <default>false</default>
+        </entry>
+
+        <entry name="firstDayOfWeek" type="Int">
+            <default>-1</default>
+        </entry>
+
+        <!-- Empty = use the Plasma theme font. -->
+        <entry name="fontFamily" type="String">
+            <default></default>
+        </entry>
+
+    </group>
+</kcfg>

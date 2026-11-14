@@ -1,0 +1,24 @@
+{
+    "KPackageStructure": "Plasma/Applet",
+    "KPlugin": {
+        "Authors": [
+            {
+                "Name": "Gustavo Bessa"
+            }
+        ],
+        "BugReportUrl": "https://github.com/Cyberbessa/plasma-vertical-clock/issues",
+        "Category": "Date and Time",
+        "Description": "A clock built for vertical panels: eight styles, switchable in the settings",
+        "Icon": "clock",
+        "Id": "com.cyberbessa.verticalclock",
+        "License": "MIT",
+        "Name": "Vertical Clock",
+        "Version": "2.8",
+        "Website": "https://github.com/Cyberbessa/plasma-vertical-clock"
+    },
+    "X-Plasma-API-Minimum-Version": "6.0",
+    "X-Plasma-Provides": [
+        "org.kde.plasma.time",
+        "org.kde.plasma.date"
+    ]
+}
