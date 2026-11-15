@@ -59,7 +59,11 @@ mirror() {
     mkdir -p "$(dirname "$DOTFILES/$rel")"
     if [ -d "$src" ]; then
         mkdir -p "$DOTFILES/$rel"
-        rsync -a --delete --exclude '.git' "$src"/ "$DOTFILES/$rel"/
+        # --delete keeps the mirror exact, but repo-only notes (README.md,
+        # .gitkeep) must survive — protect them from deletion.
+        rsync -a --delete --exclude '.git' \
+              --filter 'protect README.md' --filter 'protect .gitkeep' \
+              "$src"/ "$DOTFILES/$rel"/
     else
         cp -a "$src" "$DOTFILES/$rel"
     fi
