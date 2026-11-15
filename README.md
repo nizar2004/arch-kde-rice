@@ -110,15 +110,39 @@ restore
 
 ## 🖼️ Wallpaper slideshow
 
-`restore` finds every desktop containment (`org.kde.plasma.folder`) in
+The wallpaper library lives in **`wallpapers/`** in this repo. `restore` copies it to
+`~/Pictures/Wallpapers/`, finds every desktop containment (`org.kde.plasma.folder`) in
 `plasma-org.kde.plasma.desktop-appletsrc`, sets it to **`org.kde.slideshow`** with
 `SlidePaths=file:///home/$USER/Pictures/Wallpapers` via `kwriteconfig6`, then applies it live with
 `org.kde.PlasmaShell.evaluateScript` (`desktops()[i].wallpaperPlugin = 'org.kde.slideshow'`).
+
+To add your own wallpapers later, drop them in `~/Pictures/Wallpapers/` and run `backup`
+(see `wallpapers/README.md`).
+
 Verify any time with:
 
 ```bash
 qdbus6 org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript \
   'var d=desktops(); print(JSON.stringify(d.map(function(x){return x.wallpaperPlugin})))'
+```
+
+## 🧩 Why the panel layout replaces (not merges)
+
+plasmashell keeps the whole layout in memory and **writes it back when it exits**. Deploying
+`plasma-org.kde.plasma.desktop-appletsrc` while plasmashell is running therefore gets clobbered on
+the next restart — the old panel stays and the new applets look merged into it.
+
+`restore` avoids that by doing Phase 4 in this order:
+
+```
+stop plasmashell  →  deploy config + widgets + theme + wallpaper containments  →  start plasmashell  →  verify
+```
+
+Verification is part of the run:
+
+```console
+┃    ✔ panels(): ["right","left"]        # vertical panels applied
+┃    ✔ desktop wallpaper plugins: ["org.kde.slideshow","org.kde.slideshow"]
 ```
 
 ## 🐟 Fish everywhere (not just Ghostty)

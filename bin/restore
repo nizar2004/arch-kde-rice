@@ -142,19 +142,66 @@ deploy_tree config/konsole     "$HOME/.local/share/konsole"   # Konsole profile 
 deploy_tree config/konsolerc   "$HOME/.config/konsolerc"      # default profile selection
 
 # ── Phase 3: wallpapers & slideshow ───────────────────────────────────────────
-phase "Phase 3 · wallpapers & slideshow"
+phase "Phase 3 · wallpapers"
 WALL_DIR="$HOME/Pictures/Wallpapers"
 step "$WALL_DIR"
 if [ "$DRY" -eq 0 ]; then
     mkdir -p "$WALL_DIR"
-    cp -a "$DOTFILES/wallpapers/." "$WALL_DIR/" 2>/dev/null || true
+    if [ -d "$DOTFILES/wallpapers" ]; then
+        cp -a "$DOTFILES/wallpapers/." "$WALL_DIR"/ || warn "could not copy the repo wallpapers"
+    else
+        warn "the repo has no wallpapers/ folder"
+    fi
 fi
-ok "$(find "$WALL_DIR" -maxdepth 1 -type f 2>/dev/null | wc -l) wallpaper(s) in place"
+IMAGE_COUNT="$(find "$WALL_DIR" -maxdepth 1 -type f \
+    \( -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' -o -iname '*.webp' \) \
+    2>/dev/null | wc -l)"
+if [ "$IMAGE_COUNT" -gt 0 ]; then
+    ok "$IMAGE_COUNT wallpaper image(s) in $WALL_DIR"
+else
+    warn "no wallpaper images in $WALL_DIR — drop some in and run 'backup' to keep them in the repo"
+fi
 
 warn "the slideshow is applied in Phase 4, after the Plasma config is deployed"
 
 # ── Phase 4: Plasma UI & layout ───────────────────────────────────────────────
 phase "Phase 4 · Plasma UI, panels & taskbar icons"
+
+# plasmashell keeps the entire layout in memory and writes it back when it
+# exits. Deploying a config while it runs therefore gets clobbered on the next
+# restart (the old panel stays, the new applets appear merged into it). So:
+# deploy everything with plasmashell STOPPED, then start it exactly once.
+plasmashell_stop() {
+    if systemctl --user list-unit-files 2>/dev/null | grep -q '^plasma-plasmashell.service'; then
+        systemctl --user reset-failed plasma-plasmashell.service 2>/dev/null || true
+        systemctl --user stop plasma-plasmashell.service 2>/dev/null || true
+    fi
+    command -v kquitapp6 >/dev/null 2>&1 && kquitapp6 plasmashell 2>/dev/null || true
+    pkill -x plasmashell 2>/dev/null || true
+    for _ in $(seq 1 40); do pgrep -x plasmashell >/dev/null 2>&1 || return 0; sleep 0.5; done
+    return 0
+}
+plasmashell_start() {
+    if systemctl --user list-unit-files 2>/dev/null | grep -q '^plasma-plasmashell.service'; then
+        systemctl --user reset-failed plasma-plasmashell.service 2>/dev/null || true
+        systemctl --user start plasma-plasmashell.service 2>/dev/null || true
+    else
+        ( setsid plasmashell >/dev/null 2>&1 & )
+    fi
+    for _ in $(seq 1 60); do
+        systemctl --user is-active --quiet plasma-plasmashell.service 2>/dev/null && return 0
+        pgrep -x plasmashell >/dev/null 2>&1 && return 0
+        sleep 0.5
+    done
+    return 0
+}
+
+if [ "$DRY" -eq 1 ]; then
+    printf '      %s(dry) stop plasmashell → deploy layout → start plasmashell%s\n' "$D" "$R"
+else
+    step "stopping plasmashell (its in-memory layout would overwrite the new config)"
+    plasmashell_stop && ok "plasmashell stopped"
+fi
 
 step "custom widgets (vertical clock, custom start menu)"
 for p in "$DOTFILES"/plasma/data/plasmoids/*/; do
@@ -187,20 +234,20 @@ for f in "$DOTFILES"/plasma/config/*; do
     base="$(basename "$f")"
     if [ "$DRY" -eq 0 ]; then
         [ -e "$HOME/.config/$base" ] && cp -a "$HOME/.config/$base" "$HOME/.config/$base.bak.$STAMP"
+        rm -f "$HOME/.config/$base"                 # start clean: no leftover merge
         cp -a "$f" "$HOME/.config/$base"
         # make the captured layout belong to whoever runs this restore
         [ "$ORIGIN_USER" != "$USER" ] && sed -i "s#/home/$ORIGIN_USER#/home/$USER#g" "$HOME/.config/$base" || true
     fi
 done
 [ -d "$DOTFILES/plasma/config/kdedefaults" ] && deploy_tree plasma/config/kdedefaults "$HOME/.config/kdedefaults"
-ok "plasma config restored"
+ok "plasma config restored (layout replaced, not merged)"
 
-# ── wallpaper slideshow ───────────────────────────────────────────────────────
-step "wallpaper: every desktop → org.kde.slideshow ($WALL_DIR)"
+# ── wallpaper slideshow (written while plasmashell is stopped) ────────────────
 APP="plasma-org.kde.plasma.desktop-appletsrc"
 WALL_URL="file:///home/$USER/Pictures/Wallpapers"
+step "wallpaper: every desktop → org.kde.slideshow ($WALL_DIR)"
 if [ "$DRY" -eq 0 ]; then
-    # every desktop containment (folder / desktopcontainment) gets the slideshow
     IDS="$(awk '
         /^\[Containments\]\[[0-9]+\]$/ { id=$0; sub(/^\[Containments\]\[/,"",id); sub(/\]$/,"",id) }
         /^plugin=org\.kde\.plasma\.folder|^plugin=org\.kde\.desktopcontainment/ { print id }
@@ -217,9 +264,39 @@ else
     printf '      %s(dry) kwriteconfig6: wallpaperplugin=org.kde.slideshow + SlidePaths=%s%s\n' "$D" "$WALL_URL" "$R"
 fi
 
+step "enforcing taskbar icon size 29"
+KW="$(command -v kwriteconfig6 || command -v kwriteconfig5 || true)"
+if [ -n "$KW" ]; then
+    # the icon size comes from the theme's margin hints (panel thickness is
+    # untouched); selecting the theme is what applies 29 px.
+    run "$KW" --file plasmarc --group Theme --key name SmallTaskIcons
+    # belt & braces: some builds also honour an explicit iconSize on icontasks
+    run "$KW" --file "$APP" \
+        --group Containments --group 2 --group Applets --group 33 \
+        --group Configuration --group General --key iconSize 29
+    ok "plasmarc Theme=SmallTaskIcons, icontasks iconSize=29"
+else
+    warn "kwriteconfig6 not found; theme name must be set manually"
+fi
+
+step "starting plasmashell with the new layout"
+if [ "$DRY" -eq 0 ]; then plasmashell_start && ok "plasmashell is running"; else printf '      %s(dry) start plasmashell%s\n' "$D" "$R"; fi
+
+step "verifying the panels (should be the vertical ones: left / right)"
+if [ "$DRY" -eq 0 ] && qdbus6 org.kde.plasmashell /PlasmaShell >/dev/null 2>&1; then
+    LOCS="$(qdbus6 org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript \
+        'print(JSON.stringify(panels().map(function(p){return p.location})))' 2>/dev/null)"
+    ok "panels(): $LOCS"
+    case "$LOCS" in
+        *'"left"'*|*'"right"'*) ok "vertical panel layout applied ✔" ;;
+        *) warn "panels are not vertical — check $HOME/.config/$APP" ;;
+    esac
+else
+    printf '      %s(dry) verify panels()%s\n' "$D" "$R"
+fi
+
 step "applying the wallpaper live via org.kde.PlasmaShell.evaluateScript"
-if [ "$DRY" -eq 0 ] && command -v qdbus6 >/dev/null 2>&1 && \
-   qdbus6 org.kde.plasmashell /PlasmaShell >/dev/null 2>&1; then
+if [ "$DRY" -eq 0 ] && qdbus6 org.kde.plasmashell /PlasmaShell >/dev/null 2>&1; then
     qdbus6 org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript "
         var dir = '$WALL_URL';
         var ds = desktops();
@@ -230,46 +307,13 @@ if [ "$DRY" -eq 0 ] && command -v qdbus6 >/dev/null 2>&1 && \
             ds[i].writeConfig('SlideInterval', 1800);
             if (ds[i].reloadConfig) { ds[i].reloadConfig(); }
         }
-    " >/dev/null 2>&1 && ok "slideshow applied to $(qdbus6 org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript 'print(desktops().length)' 2>/dev/null) desktop(s)" \
-      || warn "could not script plasmashell now — it applies on the next plasmashell restart"
+    " >/dev/null 2>&1
+    PLUGS="$(qdbus6 org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript \
+        'print(JSON.stringify(desktops().map(function(d){return d.wallpaperPlugin})))' 2>/dev/null)"
+    ok "desktop wallpaper plugins: $PLUGS"
 else
     printf '      %s(dry) evaluateScript: desktops() → org.kde.slideshow%s\n' "$D" "$R"
 fi
-
-# enforce the taskbar icon size explicitly
-step "enforcing taskbar icon size 29"
-KW="$(command -v kwriteconfig6 || command -v kwriteconfig5 || true)"
-if [ -n "$KW" ]; then
-    # the icon size is produced by the theme's margin hints (panel thickness is
-    # untouched); selecting the theme is what applies 29 px.
-    run "$KW" --file plasmarc --group Theme --key name SmallTaskIcons
-    # belt & braces: some builds also honour an explicit iconSize on icontasks
-    run "$KW" --file plasma-org.kde.plasma.desktop-appletsrc \
-        --group Containments --group 2 --group Applets --group 33 \
-        --group Configuration --group General --key iconSize 29
-    ok "plasmarc Theme=SmallTaskIcons, icontasks iconSize=29"
-else
-    warn "kwriteconfig6 not found; theme name must be set manually"
-fi
-
-# restart plasmashell cleanly (clear any failed/rate-limited state first)
-restart_plasmashell() {
-    local unit="plasma-plasmashell.service"
-    if systemctl --user list-unit-files 2>/dev/null | grep -q "^${unit}"; then
-        systemctl --user reset-failed "$unit" 2>/dev/null || true
-        systemctl --user restart "$unit" 2>/dev/null || { sleep 2; systemctl --user start "$unit"; }
-        for _ in $(seq 1 60); do
-            [ "$(systemctl --user is-active "$unit" 2>/dev/null)" = "active" ] && return 0
-            sleep 0.5
-        done
-        return 1
-    fi
-    pkill -x plasmashell 2>/dev/null || true
-    sleep 2
-    ( setsid plasmashell >/dev/null 2>&1 & )
-}
-step "restarting plasmashell"
-if [ "$DRY" -eq 0 ]; then restart_plasmashell && ok "plasmashell is running"; else printf '      %s(dry) restart plasmashell%s\n' "$D" "$R"; fi
 
 # ── install the global commands ───────────────────────────────────────────────
 phase "Phase 5 · global commands"
