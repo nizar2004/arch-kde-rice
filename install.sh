@@ -25,25 +25,48 @@ REPO_URL="${RICE_REPO:-https://github.com/nizar2004/arch-kde-rice.git}"
 DEST="${RICE_DIR:-$HOME/dotfiles}"
 RUN_RESTORE=1
 
-# ── pretty output ─────────────────────────────────────────────────────────────
-if [ -t 1 ]; then
-    B=$'\e[1m'; R=$'\e[0m'; D=$'\e[2m'
-    AC=$'\e[38;5;39m'; OK=$'\e[38;5;42m'; WARN=$'\e[38;5;214m'
-    ERR=$'\e[38;5;203m'; T=$'\e[38;5;170m'
+# ── Catppuccin Mocha TUI (self-contained: this script may be curl-piped) ──────
+if [ -t 1 ] && [ -z "${NO_COLOR:-}" ] && [ "${TERM:-}" != "dumb" ]; then
+    C_RESET=$'\e[0m'; C_BOLD=$'\e[1m'; C_DIM=$'\e[2m'
+    C_TEXT=$'\e[38;2;205;214;244m'; C_SUB=$'\e[38;2;166;173;200m'
+    C_SURFACE=$'\e[38;2;88;91;112m'; C_BLUE=$'\e[38;2;137;180;250m'
+    C_MAUVE=$'\e[38;2;203;166;247m'; C_GREEN=$'\e[38;2;166;227;161m'
+    C_YELLOW=$'\e[38;2;249;226;175m'; C_RED=$'\e[38;2;243;139;168m'
+    C_TEAL=$'\e[38;2;148;226;213m'; C_LAV=$'\e[38;2;180;190;254m'
 else
-    B=; R=; D=; AC=; OK=; WARN=; ERR=; T=
+    C_RESET=; C_BOLD=; C_DIM=; C_TEXT=; C_SUB=; C_SURFACE=
+    C_BLUE=; C_MAUVE=; C_GREEN=; C_YELLOW=; C_RED=; C_TEAL=; C_LAV=
 fi
-title() { printf '\n%s◆ %s%s%s\n' "$T" "$B" "$*" "$R"; }
-step()  { printf '  %s▸%s %s%s%s\n' "$AC" "$R" "$B" "$*" "$R"; }
-ok()    { printf '    %s✔%s %s\n' "$OK" "$R" "$*"; }
-warn()  { printf '    %s▲%s %s\n' "$WARN" "$R" "$*"; }
-die()   { printf '%s✘ %s%s\n' "$ERR" "$*" "$R" >&2; exit 1; }
+_rep() { local n="$1" c="$2" s=; for ((i=0;i<n;i++)); do s+="$c"; done; printf '%s' "$s"; }
+banner() {
+    printf '\n%s\n' "${C_MAUVE}╭$(_rep 54 '─')╮$C_RESET"
+    printf '%s  %s%s%s\n' "${C_MAUVE}│$C_RESET" "$C_BOLD$C_TEXT" "$1" "$C_RESET"
+    [ -n "${2:-}" ] && printf '%s  %s%s%s\n' "${C_MAUVE}│$C_RESET" "$C_SUB" "$2" "$C_RESET"
+    printf '%s\n' "${C_MAUVE}╰$(_rep 54 '─')╯$C_RESET"
+}
+phase() { printf '\n%s%s%s  %s%s%s%s\n' "$C_SURFACE" "$(_rep 56 '─')" "$C_RESET" "${C_MAUVE}[$1/$2]${C_RESET} " "$C_BOLD$C_TEXT" "$3" "$C_RESET"; }
+step()  { printf '   %s▸%s %s%s%s\n' "$C_BLUE" "$C_RESET" "$C_TEXT" "$*" "$C_RESET"; }
+ok()    { printf '   %s✔%s %s%s%s\n' "$C_GREEN" "$C_RESET" "$C_SUB" "$*" "$C_RESET"; }
+warn()  { printf '   %s▲%s %s%s%s\n' "$C_YELLOW" "$C_RESET" "$C_YELLOW" "$*" "$C_RESET"; }
+die()   { printf '   %s✘ %s%s\n' "$C_RED" "$*" "$C_RESET" >&2; exit 1; }
+done_box() { printf '\n%s\n%s  %s✔ %s%s\n%s\n\n' \
+    "${C_GREEN}╭$(_rep 54 '─')╮$C_RESET" "${C_GREEN}│$C_RESET" "$C_GREEN$C_BOLD" "$*" "$C_RESET" \
+    "${C_GREEN}╰$(_rep 54 '─')╯$C_RESET"; }
+
+spin_run() { # spin_run <label> -- <cmd…>
+    local label="$1"; shift; [ "${1:-}" = "--" ] && shift
+    if command -v gum >/dev/null 2>&1 && [ -t 1 ]; then
+        if gum spin --spinner dot --spinner.foreground "#cba6f7" --title "$label" -- "$@"; then ok "$label"; return 0
+        else printf '   %s✘ %s%s\n' "$C_RED" "$label" "$C_RESET" >&2; return 1; fi
+    fi
+    if "$@"; then ok "$label"; else printf '   %s✘ %s%s\n' "$C_RED" "$label" "$C_RESET" >&2; return 1; fi
+}
 
 # read from the terminal even when the script is piped (curl | bash)
 ask() {
-    local prompt="$1" reply=""
-    if ! read -r -p "$prompt" reply </dev/tty 2>/dev/null; then
-        die "this installer needs an interactive terminal (run it in a terminal, not from a file picker)"
+    local reply=""
+    if ! read -r -p "$1" reply </dev/tty 2>/dev/null; then
+        die "this installer needs an interactive terminal"
     fi
     printf '%s' "$reply"
 }
@@ -54,66 +77,56 @@ while [ $# -gt 0 ]; do
         --no-restore) RUN_RESTORE=0 ;;
         --dir)        DEST="${2:-}"; shift ;;
         --repo)       REPO_URL="${2:-}"; shift ;;
-        -h|--help)    sed -n '2,20p' "${BASH_SOURCE[0]}" 2>/dev/null | sed 's/^# \{0,1\}//' || true; exit 0 ;;
+        -h|--help)    sed -n '2,18p' "${BASH_SOURCE[0]}" 2>/dev/null | sed 's/^# \{0,1\}//' || true; exit 0 ;;
         *)            echo "install.sh: unknown option: $1" >&2; exit 2 ;;
     esac
     shift
 done
 [ -n "$DEST" ] || die "empty --dir"
 
-# ── 1. fetch the repo ─────────────────────────────────────────────────────────
-title "arch-kde-rice · installer"
+banner "arch-kde-rice · installer" "fetch → link commands → rebuild"
+
+# ── [1/3] fetch the repo ──────────────────────────────────────────────────────
+phase 1 3 "fetch the repository"
 SELF="${BASH_SOURCE[0]:-}"
 SELF_DIR=""
-if [ -n "$SELF" ] && [ -f "$SELF" ]; then
-    SELF_DIR="$(cd "$(dirname "$SELF")" && pwd)"
-fi
+if [ -n "$SELF" ] && [ -f "$SELF" ]; then SELF_DIR="$(cd "$(dirname "$SELF")" && pwd)"; fi
 
 if [ -n "$SELF_DIR" ] && [ -d "$SELF_DIR/.git" ] && [ -x "$SELF_DIR/bin/restore" ]; then
     DEST="$SELF_DIR"
-    step "using the local clone at $DEST"
-    ok "repo found"
+    ok "using the local clone at $DEST"
 else
-    if ! command -v git >/dev/null 2>&1; then
-        step "git is required to fetch the rice"
-        printf '    install it with:  sudo pacman -S git\n'
-        die "git is not installed"
-    fi
+    command -v git >/dev/null 2>&1 || die "git is required — install it with:  sudo pacman -S git"
     if [ -d "$DEST/.git" ]; then
-        step "updating $DEST"
         git -C "$DEST" remote set-url origin "$REPO_URL" 2>/dev/null || true
-        git -C "$DEST" pull --ff-only -q && ok "pulled the latest commit"
+        spin_run "updated $DEST" -- git -C "$DEST" pull --ff-only -q
     elif [ -e "$DEST" ]; then
         die "$DEST exists and is not a git clone — move it away or use --dir"
     else
-        step "cloning $REPO_URL → $DEST"
-        git clone -q --depth 1 "$REPO_URL" "$DEST" && ok "cloned"
+        spin_run "cloned $REPO_URL" -- git clone -q --depth 1 "$REPO_URL" "$DEST"
     fi
 fi
-
 [ -x "$DEST/bin/restore" ] || die "no bin/restore inside $DEST"
 
-# ── 2. global commands ────────────────────────────────────────────────────────
-title "Installing the global commands"
+# ── [2/3] global commands ─────────────────────────────────────────────────────
+phase 2 3 "global commands"
 step "asking for sudo once (to link /usr/local/bin)"
 sudo -v || die "sudo was not granted"
 for c in backup restore; do
-    sudo ln -sf "$DEST/bin/$c" "/usr/local/bin/$c"
-    ok "/usr/local/bin/$c → $DEST/bin/$c"
+    spin_run "/usr/local/bin/$c → $DEST/bin/$c" -- sudo ln -sf "$DEST/bin/$c" "/usr/local/bin/$c"
 done
 
-# ── 3. restore ────────────────────────────────────────────────────────────────
+# ── [3/3] restore ─────────────────────────────────────────────────────────────
 if [ "$RUN_RESTORE" -eq 1 ]; then
-    title "Rebuilding the rice"
-    printf '  %sThis installs packages, sets fish as your shell and restores the Plasma\n' "$D"
-    printf '  layout. Continue? [Y/n] %s' "$R"
-    case "$(ask '')" in
+    phase 3 3 "rebuild the rice"
+    printf '   %sThis installs packages, sets fish as your shell and restores the Plasma layout.%s\n' "$C_SUB" "$C_RESET"
+    case "$(ask "   Continue? [Y/n] ")" in
         n|N|no|NO) warn "skipped restore — run 'restore' when you are ready" ;;
         *)         exec "$DEST/bin/restore" ;;
     esac
 else
-    warn "skipped restore (--no-restore)"
-    printf '\n  Run %srestore%s when you are ready.\n' "$B" "$R"
+    phase 3 3 "rebuild the rice"
+    warn "skipped (--no-restore) — run 'restore' when you are ready"
 fi
 
-printf '\n%s✨ Done.%s\n' "$OK" "$R"
+done_box "Installer finished"

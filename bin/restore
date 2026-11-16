@@ -13,7 +13,8 @@
 set -euo pipefail
 
 SELF="$(readlink -f "${BASH_SOURCE[0]}")"
-REPO_DEFAULT="$(cd "$(dirname "$SELF")/.." && pwd)"
+BIN_DIR="$(dirname "$SELF")"
+REPO_DEFAULT="$(cd "$BIN_DIR/.." && pwd)"
 DOTFILES="${DOTFILES_DIR:-$REPO_DEFAULT}"
 DRY=0
 
@@ -26,25 +27,13 @@ while [ $# -gt 0 ]; do
     shift
 done
 
-# ── pretty output ─────────────────────────────────────────────────────────────
-if [ -t 1 ]; then
-    B=$'\e[1m'; R=$'\e[0m'; D=$'\e[2m'
-    AC=$'\e[38;5;39m'; OK=$'\e[38;5;42m'; WARN=$'\e[38;5;214m'
-    ERR=$'\e[38;5;203m'; T=$'\e[38;5;170m'
-else
-    B=; R=; D=; AC=; OK=; WARN=; ERR=; T=
-fi
-phase() { printf '\n%s┳━ %s%s%s\n' "$T" "$B" "$*" "$R"; }
-step()  { printf '%s┃%s  %s▸%s %s\n' "$AC" "$AC" "$B" "$R" "$*"; }
-ok()    { printf '%s┃%s    %s✔%s %s\n' "$AC" "$AC" "$OK" "$R" "$*"; }
-warn()  { printf '%s┃%s    %s▲%s %s\n' "$AC" "$AC" "$WARN" "$R" "$*"; }
-die()   { printf '%s┗━✘ %s%s\n' "$ERR" "$*" "$R" >&2; exit 1; }
-done_() { printf '%s┻━ %s✔ %s%s\n' "$AC" "$OK" "$*" "$R"; }
+# shared Catppuccin TUI (gum-accelerated when available)
+. "$BIN_DIR/lib/tui.sh"
 
-run() { if [ "$DRY" -eq 1 ]; then printf '      %s(dry) %s%s\n' "$D" "$*" "$R"; else "$@"; fi; }
+banner "arch-kde-rice · restore" "rebuild the rice on a fresh Arch + KDE install"
 
 # ── Phase 0: sanity + sudo ────────────────────────────────────────────────────
-phase "Phase 0 · sanity & privileges"
+phase "preflight · sanity & privileges"
 [ -d "$DOTFILES" ] || die "dotfiles repo not found at $DOTFILES"
 [ "$(id -u)" -ne 0 ] || die "run this as your normal user, not root"
 STAMP="$(date +%Y%m%d-%H%M%S)"
@@ -63,11 +52,9 @@ else
 fi
 
 # ── Phase 1: dependencies & shell ─────────────────────────────────────────────
-phase "Phase 1 · dependencies & default shell"
+phase 1 5 "dependencies & default shell"
 PKGS=(fish fastfetch ghostty ttf-meslo-nerd git curl unzip fontconfig rsync)
-step "pacman -S --needed ${PKGS[*]}"
-run sudo pacman -S --needed --noconfirm "${PKGS[@]}"
-ok "core packages present"
+spin_run "pacman · installing ${#PKGS[@]} packages" -- sudo pacman -S --needed --noconfirm "${PKGS[@]}"
 
 if ! command -v oh-my-posh >/dev/null 2>&1; then
     step "installing oh-my-posh"
@@ -88,9 +75,7 @@ FISH_BIN="$(command -v fish || echo /usr/bin/fish)"
 # 1) register fish in /etc/shells — without this, usermod/chsh are silently
 #    ignored by login managers and terminal emulators
 if ! grep -qxF "$FISH_BIN" /etc/shells 2>/dev/null; then
-    step "register $FISH_BIN in /etc/shells"
-    run sudo sh -c "printf '%s\\n' '$FISH_BIN' >> /etc/shells"
-    ok "/etc/shells updated"
+    spin_run "registering fish in /etc/shells" -- sudo sh -c "printf '%s\\n' '$FISH_BIN' >> /etc/shells"
 else
     ok "$FISH_BIN already in /etc/shells"
 fi
@@ -98,8 +83,7 @@ fi
 # 2) force the account login shell for ALL terminals (Konsole, Alacritty, TTYs,
 #    VS Code …). usermod is used because chsh can be silently ignored.
 if [ "$(getent passwd "$USER" | cut -d: -f7)" != "$FISH_BIN" ]; then
-    step "usermod -s $FISH_BIN $USER"
-    run sudo usermod -s "$FISH_BIN" "$USER"
+    spin_run "usermod -s $FISH_BIN $USER" -- sudo usermod -s "$FISH_BIN" "$USER"
     if [ "$DRY" -eq 0 ]; then
         ok "login shell is now $(getent passwd "$USER" | cut -d: -f7)"
     else
@@ -109,8 +93,56 @@ else
     ok "login shell already fish"
 fi
 
+# ── OS install date → fastfetch "OS Age" ──────────────────────────────────────
+# fastfetch reads the first line of ~/.local/state/ArchKDE-SystemRestore/os-install-date
+# (falling back to the birth time of /). We pin it to 2026-07-04, and also make
+# /var/log/pacman.log agree so other "OS age" tools show the same date.
+set_os_install_date() {
+    local date="2026-07-04" log=/var/log/pacman.log
+    local ts first
+    ts="$(date -d "$date 00:00:00" +%s 2>/dev/null || echo 0)"
+    first="[2026-07-04T00:00:00+0000] [PACMAN] Running 'pacman -Syu'"
+
+    step "OS install date → $date"
+
+    # 1) the file fastfetch actually reads (no root needed)
+    if [ "$DRY" -eq 0 ]; then
+        mkdir -p "$HOME/.local/state/ArchKDE-SystemRestore"
+        printf '%s\n' "$ts" > "$HOME/.local/state/ArchKDE-SystemRestore/os-install-date"
+        ok "~/.local/state/ArchKDE-SystemRestore/os-install-date = $ts ($date)"
+    else
+        dry "write os-install-date = $ts ($date)"
+    fi
+
+    # 2) /var/log/pacman.log — back it up, then make its first entry the date
+    if [ "$DRY" -eq 0 ]; then
+        if [ -f "$log" ]; then
+            if [ ! -f "$log.rice-bak" ]; then
+                spin_run "backing up $log → $log.rice-bak" -- sudo cp -a "$log" "$log.rice-bak"
+            else
+                info "$log.rice-bak already exists"
+            fi
+            if head -n1 "$log" | grep -qF "[2026-07-04T00:00:00+0000]"; then
+                info "pacman.log already starts on $date"
+            else
+                local tmp; tmp="$(mktemp)"
+                { printf '%s\n' "$first"; cat "$log"; } > "$tmp"
+                spin_run "prepending the $date entry to pacman.log" -- sudo cp "$tmp" "$log"
+                rm -f "$tmp"
+            fi
+            spin_run "touch -d \"$date 00:00:00\" pacman.log" -- sudo touch -d "$date 00:00:00" "$log"
+        else
+            warn "$log not found — skipped (fastfetch still uses the state file)"
+        fi
+    else
+        dry "backup $log, prepend '$first', touch -d \"$date 00:00:00\""
+    fi
+}
+
+set_os_install_date
+
 # ── Phase 2: fonts & terminal configs ─────────────────────────────────────────
-phase "Phase 2 · fonts & terminal configuration"
+phase 2 5 "fonts & terminal configuration"
 
 if [ -n "$(ls -A "$DOTFILES/fonts" 2>/dev/null | grep -v '^\.gitkeep$' || true)" ]; then
     step "deploying user fonts → ~/.local/share/fonts"
@@ -142,7 +174,7 @@ deploy_tree config/konsole     "$HOME/.local/share/konsole"   # Konsole profile 
 deploy_tree config/konsolerc   "$HOME/.config/konsolerc"      # default profile selection
 
 # ── Phase 3: wallpapers & slideshow ───────────────────────────────────────────
-phase "Phase 3 · wallpapers"
+phase 3 5 "wallpapers"
 WALL_DIR="$HOME/Pictures/Wallpaper"                  # note: singular
 WALL_PATH="/home/$USER/Pictures/Wallpaper/"          # plain path — what Plasma stores
 LEGACY_WALL_DIR="$HOME/Pictures/Wallpapers"          # older name, merged if present
@@ -172,7 +204,7 @@ fi
 warn "the slideshow is applied in Phase 4, after the Plasma config is deployed"
 
 # ── Phase 4: Plasma UI & layout ───────────────────────────────────────────────
-phase "Phase 4 · Plasma UI, panels & taskbar icons"
+phase 4 5 "Plasma UI, panels & taskbar icons"
 
 # plasmashell keeps the entire layout in memory and writes it back when it
 # exits. Deploying a config while it runs therefore gets clobbered on the next
@@ -325,10 +357,9 @@ else
 fi
 
 # ── install the global commands ───────────────────────────────────────────────
-phase "Phase 5 · global commands"
+phase 5 5 "global commands"
 for c in backup restore; do
-    run sudo ln -sf "$DOTFILES/bin/$c" "/usr/local/bin/$c"
-    ok "/usr/local/bin/$c → $DOTFILES/bin/$c"
+    spin_run "/usr/local/bin/$c → $DOTFILES/bin/$c" -- sudo ln -sf "$DOTFILES/bin/$c" "/usr/local/bin/$c"
 done
 
-done_ "Restore complete — log out and back in so fish (and the panel) fully apply."
+done_box "Restore complete — log out and back in so fish fully applies"

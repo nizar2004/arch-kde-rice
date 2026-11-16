@@ -35,8 +35,7 @@ Color=0,0,0
 [Containments][1][Wallpaper][org.kde.slideshow][General]
 Image=file:///home/nizar/Pictures/Wallpapers/wallhaven.jpg
 SlideInterval=1800
-SlidePaths=/home/nizar/Pictures/Wallpapers/
-UncheckedSlides=/home/nizar/Pictures/Wallpapers/Cat.jpg
+SlidePaths=/home/nizar/Pictures/Wallpaper/
 
 [Containments][2]
 activityId=

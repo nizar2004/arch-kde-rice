@@ -7,6 +7,12 @@ Switch to Last-Used Keyboard Layout=Meta+Alt+L,Meta+Alt+L,Switch to Last-Used Ke
 Switch to Next Keyboard Layout=Meta+Alt+K,Meta+Alt+K,Switch to Next Keyboard Layout
 _k_friendly_name=Keyboard Layout Switcher
 
+[anomaly.hex]
+_k_friendly_name=Hex
+capture-F9=F9,F9,Annotate
+dictation-CTRL-space=Ctrl+Space,Ctrl+Space,Dictation
+paste-last-CTRL-ALT-v=Ctrl+Alt+V,Ctrl+Alt+V,Paste last dictation
+
 [kmix]
 _k_friendly_name=Audio Volume
 decrease_microphone_volume=Microphone Volume Down,Microphone Volume Down,Decrease Microphone Volume
