@@ -50,6 +50,7 @@ Other flags: `--dir <path>` (where to clone, default `~/dotfiles`), `--repo <url
 ```
 .
 ├── bin/
+│   ├── lib/tui.sh        # shared Catppuccin TUI (gum-accelerated)
 │   ├── backup            # snapshot this machine → repo → push
 │   └── restore           # rebuild the rice on a fresh install
 ├── config/
@@ -156,6 +157,31 @@ sudo usermod -s "$(command -v fish)" "$USER"
 ```
 
 Log out and back in once for the shell change to reach the current session.
+
+## ⏱️ OS Age (fastfetch)
+
+The fastfetch `OS Age` module reads `~/.local/state/ArchKDE-SystemRestore/os-install-date`
+(falling back to the birth time of `/`). `restore` pins it to **2026-07-04** — so the prompt reports
+the install age from that date — and makes `/var/log/pacman.log` agree:
+
+1. writes the Unix timestamp for `2026-07-04` to the state file,
+2. backs `pacman.log` up to `pacman.log.rice-bak`, prepends
+   `[2026-07-04T00:00:00+0000] [PACMAN] Running 'pacman -Syu'` if the log doesn't already start there,
+3. `touch -d "2026-07-04 00:00:00" /var/log/pacman.log`.
+
+Change the date by editing `set_os_install_date()` in `bin/restore`. Verify with:
+
+```bash
+cat ~/.local/state/ArchKDE-SystemRestore/os-install-date   # → 1783094400
+fastfetch | grep 'OS Age'                                  # → : 136 days
+```
+
+## 🎨 Terminal UI
+
+`backup`, `restore` and `install.sh` share a Catppuccin Mocha UI (`bin/lib/tui.sh`): rounded
+box-drawing banners, `[n/5]` step badges, ✔/✖ status lines and a spinner. It uses
+**Charmbracelet `gum`** when installed (`sudo pacman -S gum`) and falls back to pure ANSI/Unicode
+otherwise — no hard dependency, and it automatically goes quiet when output is piped.
 
 ## 📐 How the 29 px taskbar icons work
 
