@@ -43,7 +43,7 @@ Other flags: `--dir <path>` (where to clone, default `~/dotfiles`), `--repo <url
 | 🐟 **Shell** | **fish** as the real login shell (`usermod -s /usr/bin/fish` + registered in `/etc/shells`), so **every** terminal — Konsole, Alacritty, TTYs, VS Code — starts fish. **oh-my-posh** prompt (`nizar-simple.omp.json`) + custom functions. |
 | 🖥️ **Terminal** | **Ghostty** config (Tokyo Night-ish palette, Meslo Nerd Font) **and** a **Konsole** profile with `Command=/usr/bin/fish`. |
 | ⚡ **Fetch** | Custom **fastfetch** profile. |
-| 🖼️ **Wallpapers** | `~/Pictures/Wallpapers/` wired to Plasma's **Slideshow** engine. |
+| 🖼️ **Wallpapers** | `~/Pictures/Wallpaper/` wired to Plasma's **Slideshow** engine. |
 
 ## 🗂️ Repository layout
 
@@ -63,7 +63,7 @@ Other flags: `--dir <path>` (where to clone, default `~/dotfiles`), `--repo <url
 │   │   ├── plasmoids/    # com.cyberbessa.verticalclock, com.nizar.dashboard
 │   │   └── plasma_icons/ # panel launcher icons
 │   └── desktoptheme/     # SmallTaskIcons (29 px taskbar icons)
-├── wallpapers/           # → ~/Pictures/Wallpapers
+├── wallpapers/           # → ~/Pictures/Wallpaper
 └── fonts/                # user fonts (if any) → ~/.local/share/fonts
 ```
 
@@ -92,7 +92,7 @@ $ restore
 ┃  ▸ asking for sudo once …
 ┳━ Phase 1 · dependencies & default shell   # pacman + oh-my-posh + chsh fish
 ┳━ Phase 2 · fonts & terminal configuration # fish, oh-my-posh, ghostty, fastfetch
-┳━ Phase 3 · wallpapers & slideshow         # → ~/Pictures/Wallpapers + org.kde.slideshow
+┳━ Phase 3 · wallpapers                        # → ~/Pictures/Wallpaper/ + org.kde.slideshow
 ┳━ Phase 4 · Plasma UI, panels & taskbar icons  # widgets, layout, icon size 29
 ┳━ Phase 5 · global commands
 ```
@@ -111,12 +111,12 @@ restore
 ## 🖼️ Wallpaper slideshow
 
 The wallpaper library lives in **`wallpapers/`** in this repo. `restore` copies it to
-`~/Pictures/Wallpapers/`, finds every desktop containment (`org.kde.plasma.folder`) in
+`~/Pictures/Wallpaper/`, finds every desktop containment (`org.kde.plasma.folder`) in
 `plasma-org.kde.plasma.desktop-appletsrc`, sets it to **`org.kde.slideshow`** with
-`SlidePaths=file:///home/$USER/Pictures/Wallpapers` via `kwriteconfig6`, then applies it live with
+`SlidePaths=/home/$USER/Pictures/Wallpaper/` via `kwriteconfig6`, then applies it live with
 `org.kde.PlasmaShell.evaluateScript` (`desktops()[i].wallpaperPlugin = 'org.kde.slideshow'`).
 
-To add your own wallpapers later, drop them in `~/Pictures/Wallpapers/` and run `backup`
+To add your own wallpapers later, drop them in `~/Pictures/Wallpaper/` and run `backup`
 (see `wallpapers/README.md`).
 
 Verify any time with:

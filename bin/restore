@@ -143,10 +143,17 @@ deploy_tree config/konsolerc   "$HOME/.config/konsolerc"      # default profile 
 
 # ── Phase 3: wallpapers & slideshow ───────────────────────────────────────────
 phase "Phase 3 · wallpapers"
-WALL_DIR="$HOME/Pictures/Wallpapers"
+WALL_DIR="$HOME/Pictures/Wallpaper"                  # note: singular
+WALL_PATH="/home/$USER/Pictures/Wallpaper/"          # plain path — what Plasma stores
+LEGACY_WALL_DIR="$HOME/Pictures/Wallpapers"          # older name, merged if present
 step "$WALL_DIR"
 if [ "$DRY" -eq 0 ]; then
     mkdir -p "$WALL_DIR"
+    # carry over anything already in the older "Wallpapers" folder
+    if [ -d "$LEGACY_WALL_DIR" ] && [ "$LEGACY_WALL_DIR" != "$WALL_DIR" ]; then
+        cp -an "$LEGACY_WALL_DIR/." "$WALL_DIR"/ 2>/dev/null || true
+        ok "merged your existing $LEGACY_WALL_DIR"
+    fi
     if [ -d "$DOTFILES/wallpapers" ]; then
         cp -a "$DOTFILES/wallpapers/." "$WALL_DIR"/ || warn "could not copy the repo wallpapers"
     else
@@ -245,7 +252,6 @@ ok "plasma config restored (layout replaced, not merged)"
 
 # ── wallpaper slideshow (written while plasmashell is stopped) ────────────────
 APP="plasma-org.kde.plasma.desktop-appletsrc"
-WALL_URL="file:///home/$USER/Pictures/Wallpapers"
 step "wallpaper: every desktop → org.kde.slideshow ($WALL_DIR)"
 if [ "$DRY" -eq 0 ]; then
     IDS="$(awk '
@@ -255,13 +261,13 @@ if [ "$DRY" -eq 0 ]; then
     for id in $IDS; do
         kwriteconfig6 --file "$APP" --group Containments --group "$id" --key wallpaperplugin org.kde.slideshow
         kwriteconfig6 --file "$APP" --group Containments --group "$id" --group Wallpaper \
-                      --group org.kde.slideshow --group General --key SlidePaths "$WALL_URL"
+                      --group org.kde.slideshow --group General --key SlidePaths "$WALL_PATH"
         kwriteconfig6 --file "$APP" --group Containments --group "$id" --group Wallpaper \
                       --group org.kde.slideshow --group General --key SlideInterval 1800
     done
     ok "set org.kde.slideshow on containment(s): $(echo $IDS | tr '\n' ' ')"
 else
-    printf '      %s(dry) kwriteconfig6: wallpaperplugin=org.kde.slideshow + SlidePaths=%s%s\n' "$D" "$WALL_URL" "$R"
+    printf '      %s(dry) kwriteconfig6: wallpaperplugin=org.kde.slideshow + SlidePaths=%s%s\n' "$D" "$WALL_PATH" "$R"
 fi
 
 step "enforcing taskbar icon size 29"
@@ -298,7 +304,7 @@ fi
 step "applying the wallpaper live via org.kde.PlasmaShell.evaluateScript"
 if [ "$DRY" -eq 0 ] && qdbus6 org.kde.plasmashell /PlasmaShell >/dev/null 2>&1; then
     qdbus6 org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript "
-        var dir = '$WALL_URL';
+        var dir = '$WALL_PATH';
         var ds = desktops();
         for (var i = 0; i < ds.length; i++) {
             ds[i].wallpaperPlugin = 'org.kde.slideshow';
@@ -311,6 +317,9 @@ if [ "$DRY" -eq 0 ] && qdbus6 org.kde.plasmashell /PlasmaShell >/dev/null 2>&1; 
     PLUGS="$(qdbus6 org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript \
         'print(JSON.stringify(desktops().map(function(d){return d.wallpaperPlugin})))' 2>/dev/null)"
     ok "desktop wallpaper plugins: $PLUGS"
+    STORED="$(kreadconfig6 --file "$APP" --group Containments --group 1 --group Wallpaper \
+        --group org.kde.slideshow --group General --key SlidePaths 2>/dev/null)"
+    ok "stored SlidePaths: $STORED"
 else
     printf '      %s(dry) evaluateScript: desktops() → org.kde.slideshow%s\n' "$D" "$R"
 fi

@@ -94,7 +94,15 @@ fi
 
 # ── wallpapers ────────────────────────────────────────────────────────────────
 title "Wallpapers"
-mirror "$HOME/Pictures/Wallpapers" wallpapers
+# current folder is ~/Pictures/Wallpaper; fall back to the older plural name
+if [ -d "$HOME/Pictures/Wallpaper" ]; then
+    mirror "$HOME/Pictures/Wallpaper" wallpapers
+elif [ -d "$HOME/Pictures/Wallpapers" ]; then
+    warn "using the legacy ~/Pictures/Wallpapers folder (restore creates ~/Pictures/Wallpaper)"
+    mirror "$HOME/Pictures/Wallpapers" wallpapers
+else
+    warn "no ~/Pictures/Wallpaper folder yet"
+fi
 
 # ── Plasma: config files ──────────────────────────────────────────────────────
 title "Plasma configuration"
