@@ -26,16 +26,17 @@ DialogWidth=810
 [Containments][1][General]
 changedPositions={"desktop:/l9ard 7mar":["1371x771,1829x1143","4","6"]}
 lastResolution=1829x1143
-positions={"1371x771":["1","10","desktop:/steam.desktop","0","0","desktop:/l9ard 7mar","4","6"],"1829x1143":["1","4","desktop:/steam.desktop","0","0","desktop:/l9ard 7mar","4","6"]}
+positions={"1371x771":["1","12","desktop:/l9ard 7mar","4","6","desktop:/steam.desktop","0","0"],"1829x1143":["1","4","desktop:/l9ard 7mar","4","6","desktop:/steam.desktop","0","0"]}
 sortMode=-1
 
 [Containments][1][Wallpaper][org.kde.color][General]
 Color=0,0,0
 
 [Containments][1][Wallpaper][org.kde.slideshow][General]
-Image=file:///home/nizar/Pictures/Wallpapers/Cat.jpg
+Image=file:///home/nizar/Pictures/Wallpapers/wallhaven.jpg
 SlideInterval=1800
-SlidePaths=/home/nizar/Pictures/Wallpaper/
+SlidePaths=/home/nizar/Pictures/Wallpapers/
+UncheckedSlides=/home/nizar/Pictures/Wallpapers/Cat.jpg
 
 [Containments][2]
 activityId=
