@@ -4,39 +4,6 @@ RightButton;NoModifier=org.kde.contextmenu
 [ActionPlugins][1]
 RightButton;NoModifier=org.kde.contextmenu
 
-[Containments][1]
-ItemGeometries-1371x771=
-ItemGeometries-1829x1143=
-ItemGeometries-1920x1080=
-ItemGeometries-1969x1231=
-ItemGeometries-2048x1280=
-ItemGeometriesHorizontal=
-activityId=24390312-c262-4f62-8826-62acf819a06c
-formfactor=0
-immutability=1
-lastScreen=0
-location=0
-plugin=org.kde.plasma.folder
-wallpaperplugin=org.kde.slideshow
-
-[Containments][1][ConfigDialog]
-DialogHeight=630
-DialogWidth=810
-
-[Containments][1][General]
-changedPositions={"desktop:/l9ard 7mar":["1371x771,1829x1143","4","6"]}
-lastResolution=1829x1143
-positions={"1371x771":["1","12","desktop:/l9ard 7mar","4","6","desktop:/steam.desktop","0","0"],"1829x1143":["1","4","desktop:/l9ard 7mar","4","6","desktop:/steam.desktop","0","0"]}
-sortMode=-1
-
-[Containments][1][Wallpaper][org.kde.color][General]
-Color=0,0,0
-
-[Containments][1][Wallpaper][org.kde.slideshow][General]
-Image=file:///home/nizar/Pictures/Wallpapers/wallhaven.jpg
-SlideInterval=1800
-SlidePaths=/home/nizar/Pictures/Wallpaper/
-
 [Containments][2]
 activityId=
 formfactor=3
@@ -77,6 +44,7 @@ DialogHeight=630
 DialogWidth=810
 
 [Containments][2][Applets][33][Configuration][General]
+iconSize=29
 iconSpacing=0
 launchers=applications:google-chrome.desktop
 
@@ -142,10 +110,6 @@ migrated=true
 immutability=1
 plugin=org.kde.plasma.keyboardindicator
 
-[Containments][2][Applets][7][Applets][16]
-immutability=1
-plugin=org.kde.plasma.printmanager
-
 [Containments][2][Applets][7][Applets][17]
 immutability=1
 plugin=org.kde.plasma.cameraindicator
@@ -162,10 +126,6 @@ plugin=org.kde.plasma.devicenotifier
 immutability=1
 plugin=org.kde.plasma.notifications
 
-[Containments][2][Applets][7][Applets][21]
-immutability=1
-plugin=org.kde.plasma.weather
-
 [Containments][2][Applets][7][Applets][24]
 immutability=1
 plugin=org.kde.plasma.brightness
@@ -173,10 +133,6 @@ plugin=org.kde.plasma.brightness
 [Containments][2][Applets][7][Applets][25]
 immutability=1
 plugin=org.kde.plasma.battery
-
-[Containments][2][Applets][7][Applets][26]
-immutability=1
-plugin=org.kde.plasma.mediacontroller
 
 [Containments][2][Applets][7][Applets][27]
 immutability=1
@@ -194,6 +150,10 @@ plugin=org.kde.kupapplet
 immutability=1
 plugin=org.kde.plasma.vault
 
+[Containments][2][Applets][7][Applets][8][Configuration][ConfigDialog]
+DialogHeight=630
+DialogWidth=810
+
 [Containments][2][Applets][7][Applets][9]
 immutability=1
 plugin=org.kde.plasma.dwellclicker
@@ -203,29 +163,14 @@ DialogHeight=630
 DialogWidth=810
 
 [Containments][2][Applets][7][General]
-extraItems=org.kde.plasma.vault,org.kde.plasma.bluetooth,org.kde.plasma.dwellclicker,org.kde.plasma.keyboardlayout,org.kde.kscreen,org.kde.plasma.networkmanagement,org.kde.plasma.volume,org.kde.plasma.keyboardindicator,org.kde.plasma.printmanager,org.kde.plasma.cameraindicator,org.kde.plasma.battery,org.kde.kupapplet,org.kde.plasma.manage-inputmethod,org.kde.plasma.devicenotifier,org.kde.plasma.brightness,org.kde.plasma.weather,org.kde.kdeconnect,org.kde.plasma.clipboard,org.kde.plasma.mediacontroller,org.kde.plasma.notifications
-hiddenItems=org.kde.kdeconnect,org.kde.plasma.clipboard,Cachy-Update,5WC8P5rqmt,org.kde.plasma.mediacontroller,JX629GHynV,speedifyui,ZapZap,Easy Effects,D2CV3mNxd-,org.kde.plasma.notifications,L7SbV9Lr1Z
+disabledStatusNotifiers=Free Download Manager
+extraItems=org.kde.plasma.vault,org.kde.plasma.bluetooth,org.kde.plasma.dwellclicker,org.kde.plasma.keyboardlayout,org.kde.kscreen,org.kde.plasma.networkmanagement,org.kde.plasma.volume,org.kde.plasma.keyboardindicator,org.kde.plasma.cameraindicator,org.kde.plasma.battery,org.kde.kupapplet,org.kde.plasma.manage-inputmethod,org.kde.plasma.devicenotifier,org.kde.plasma.brightness,org.kde.kdeconnect,org.kde.plasma.clipboard,org.kde.plasma.notifications
+hiddenItems=org.kde.kdeconnect,org.kde.plasma.clipboard,Cachy-Update,5WC8P5rqmt,JX629GHynV,speedifyui,ZapZap,Easy Effects,D2CV3mNxd-,org.kde.plasma.notifications,L7SbV9Lr1Z,ROG Control Center
+iconSpacing=1
 knownItems=org.kde.plasma.vault,org.kde.plasma.bluetooth,org.kde.plasma.dwellclicker,org.kde.plasma.keyboardlayout,org.kde.plasma.clipboard,org.kde.plasma.mediacontroller,org.kde.kscreen,org.kde.plasma.networkmanagement,org.kde.plasma.volume,org.kde.plasma.keyboardindicator,org.kde.plasma.printmanager,org.kde.plasma.cameraindicator,org.kde.plasma.battery,org.kde.kupapplet,org.kde.plasma.manage-inputmethod,org.kde.plasma.devicenotifier,org.kde.plasma.brightness,org.kde.plasma.notifications,org.kde.plasma.weather,org.kde.kdeconnect
 
 [Containments][2][General]
 AppletOrder=28;4;33;41;40;42;6;7;23
-
-[Containments][34]
-ItemGeometries-1371x771=
-ItemGeometries-1829x1143=
-ItemGeometries-1920x1080=
-ItemGeometriesHorizontal=
-activityId=24390312-c262-4f62-8826-62acf819a06c
-formfactor=0
-immutability=1
-lastScreen=1
-location=0
-plugin=org.kde.plasma.folder
-wallpaperplugin=org.kde.slideshow
-
-[Containments][34][Wallpaper][org.kde.slideshow][General]
-SlideInterval=1800
-SlidePaths=/home/nizar/Pictures/Wallpaper/
 
 [Containments][35]
 activityId=
@@ -270,6 +215,35 @@ url=file:///home/nizar/.local/share/applications/steam.desktop
 
 [Containments][35][General]
 AppletOrder=47;48;38;39
+
+[Containments][49]
+ItemGeometries-1707x1067=
+ItemGeometries-1920x1080=
+ItemGeometriesHorizontal=
+activityId=20c8c68f-2fee-43f9-a28d-3ea7339f74d6
+formfactor=0
+immutability=1
+lastScreen=0
+location=0
+plugin=org.kde.plasma.folder
+wallpaperplugin=org.kde.slideshow
+
+[Containments][49][Wallpaper][org.kde.slideshow][General]
+Image=file:///home/nizar/Pictures/Wallpaper/wallpaperflare.com_wallpaper.jpg
+SlideInterval=1800
+SlidePaths=/home/nizar/Pictures/Wallpaper/
+
+[Containments][50]
+ItemGeometries-1707x1067=
+ItemGeometries-1920x1080=
+ItemGeometriesHorizontal=
+activityId=20c8c68f-2fee-43f9-a28d-3ea7339f74d6
+formfactor=0
+immutability=1
+lastScreen=1
+location=0
+plugin=org.kde.plasma.folder
+wallpaperplugin=org.kde.image
 
 [ScreenMapping]
 itemsOnDisabledScreens=
