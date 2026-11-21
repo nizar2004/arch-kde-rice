@@ -1,3 +1,20 @@
+[Applets][1]
+activityId=20c8c68f-2fee-43f9-a28d-3ea7339f74d6
+formfactor=0
+immutability=1
+lastScreen=0
+location=0
+plugin=org.kde.bigscreen.homescreen
+wallpaperplugin=org.kde.slideshow
+
+[Applets][1][Shortcuts]
+global=Meta+F1
+
+[Applets][1][Wallpaper][org.kde.slideshow][General]
+Image=file:///usr/share/wallpapers/Elarun/
+SlideInterval=480
+SlidePaths=/usr/share/wallpapers/
+
 [PlasmaViews][Panel 2]
 floating=1
 panelLengthMode=0

@@ -164,10 +164,10 @@ DialogWidth=810
 
 [Containments][2][Applets][7][General]
 disabledStatusNotifiers=Free Download Manager
-extraItems=org.kde.plasma.bluetooth,org.kde.plasma.dwellclicker,org.kde.plasma.keyboardlayout,org.kde.kscreen,org.kde.plasma.networkmanagement,org.kde.plasma.volume,org.kde.plasma.keyboardindicator,org.kde.plasma.cameraindicator,org.kde.plasma.battery,org.kde.plasma.manage-inputmethod,org.kde.plasma.devicenotifier,org.kde.plasma.brightness,org.kde.kdeconnect,org.kde.plasma.clipboard,org.kde.plasma.notifications
+extraItems=org.kde.plasma.dwellclicker,org.kde.plasma.keyboardlayout,org.kde.plasma.networkmanagement,org.kde.plasma.volume,org.kde.plasma.cameraindicator,org.kde.plasma.battery,org.kde.plasma.manage-inputmethod,org.kde.plasma.devicenotifier,org.kde.plasma.brightness,org.kde.kdeconnect,org.kde.plasma.clipboard,org.kde.plasma.notifications,org.kde.kscreen
 hiddenItems=org.kde.kdeconnect,org.kde.plasma.clipboard,Cachy-Update,5WC8P5rqmt,JX629GHynV,speedifyui,ZapZap,Easy Effects,D2CV3mNxd-,org.kde.plasma.notifications,L7SbV9Lr1Z,ROG Control Center
 iconSpacing=1
-knownItems=org.kde.plasma.bluetooth,org.kde.plasma.dwellclicker,org.kde.plasma.keyboardlayout,org.kde.plasma.clipboard,org.kde.plasma.mediacontroller,org.kde.kscreen,org.kde.plasma.networkmanagement,org.kde.plasma.volume,org.kde.plasma.keyboardindicator,org.kde.plasma.printmanager,org.kde.plasma.cameraindicator,org.kde.plasma.battery,org.kde.plasma.manage-inputmethod,org.kde.plasma.devicenotifier,org.kde.plasma.brightness,org.kde.plasma.notifications,org.kde.plasma.weather,org.kde.kdeconnect
+knownItems=org.kde.plasma.dwellclicker,org.kde.plasma.keyboardlayout,org.kde.plasma.clipboard,org.kde.plasma.mediacontroller,org.kde.plasma.networkmanagement,org.kde.plasma.volume,org.kde.plasma.cameraindicator,org.kde.plasma.battery,org.kde.plasma.manage-inputmethod,org.kde.plasma.devicenotifier,org.kde.plasma.brightness,org.kde.plasma.notifications,org.kde.kdeconnect,org.kde.kscreen
 
 [Containments][2][General]
 AppletOrder=28;4;33;41;40;42;6;7;23
@@ -217,6 +217,7 @@ url=file:///home/nizar/.local/share/applications/steam.desktop
 AppletOrder=47;48;38;39
 
 [Containments][49]
+ItemGeometries-1280x720=
 ItemGeometries-1707x1067=
 ItemGeometries-1920x1080=
 ItemGeometriesHorizontal=
@@ -227,6 +228,10 @@ lastScreen=0
 location=0
 plugin=org.kde.plasma.folder
 wallpaperplugin=org.kde.slideshow
+
+[Containments][49][ConfigDialog]
+DialogHeight=630
+DialogWidth=810
 
 [Containments][49][Wallpaper][org.kde.slideshow][General]
 Image=file:///home/nizar/Pictures/Wallpaper/__upscaled_upscaled.jpeg
@@ -243,7 +248,11 @@ immutability=1
 lastScreen=1
 location=0
 plugin=org.kde.plasma.folder
-wallpaperplugin=org.kde.image
+wallpaperplugin=org.kde.slideshow
+
+[Containments][50][Wallpaper][org.kde.slideshow][General]
+SlideInterval=1800
+SlidePaths=/home/nizar/Pictures/Wallpaper/
 
 [ScreenMapping]
 itemsOnDisabledScreens=

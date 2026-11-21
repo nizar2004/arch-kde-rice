@@ -78,6 +78,7 @@
                 "hdrIccProfilePath": "",
                 "highDynamicRange": false,
                 "iccProfilePath": "",
+                "maxBitsPerColor": 0,
                 "mode": {
                     "cvt": {
                         "clock": 148500,
@@ -130,7 +131,7 @@
                 "lidClosed": false,
                 "outputs": [
                     {
-                        "enabled": false,
+                        "enabled": true,
                         "outputIndex": 0,
                         "position": {
                             "x": 0,
@@ -140,7 +141,7 @@
                         "replicationSource": ""
                     },
                     {
-                        "enabled": true,
+                        "enabled": false,
                         "outputIndex": 1,
                         "position": {
                             "x": 0,
