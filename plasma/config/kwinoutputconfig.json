@@ -13,7 +13,7 @@
                 ],
                 "autoRotation": "InTabletMode",
                 "automaticBrightness": false,
-                "brightness": 0.5,
+                "brightness": 1,
                 "colorPowerTradeoff": "PreferEfficiency",
                 "colorProfileSource": "sRGB",
                 "connectorName": "eDP-1",
@@ -50,7 +50,7 @@
                 "sdrGamutWideness": 0,
                 "sharpness": 0,
                 "transform": "Normal",
-                "uuid": "dc977ee1-6f83-4cee-b0e9-a9880ef27608",
+                "uuid": "b2b76063-91fc-4e23-a64b-a5df16113bde",
                 "vrrPolicy": "Never",
                 "wideColorGamut": false
             },
@@ -98,12 +98,12 @@
                 },
                 "overscan": 0,
                 "rgbRange": "Automatic",
-                "scale": 1.5,
+                "scale": 1,
                 "sdrBrightness": 200,
                 "sdrGamutWideness": 0,
                 "sharpness": 0,
                 "transform": "Normal",
-                "uuid": "78cd7df4-d5a2-4a2f-8b84-65e9b1a06791",
+                "uuid": "6d369b43-d128-4a26-9476-e84e42de8e31",
                 "vrrPolicy": "Never",
                 "wideColorGamut": false
             }
@@ -143,21 +143,6 @@
                     {
                         "enabled": false,
                         "outputIndex": 1,
-                        "position": {
-                            "x": 0,
-                            "y": 0
-                        },
-                        "priority": 1,
-                        "replicationSource": ""
-                    }
-                ]
-            },
-            {
-                "lidClosed": true,
-                "outputs": [
-                    {
-                        "enabled": true,
-                        "outputIndex": 0,
                         "position": {
                             "x": 0,
                             "y": 0

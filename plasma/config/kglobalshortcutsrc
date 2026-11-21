@@ -2,10 +2,11 @@
 _k_friendly_name=Activity Manager
 switch-to-activity-20c8c68f-2fee-43f9-a28d-3ea7339f74d6=none,none,Switch to activity "Default"
 switch-to-activity-24390312-c262-4f62-8826-62acf819a06c=none,none,Switch to activity "Default"
+switch-to-activity-2fa24fee-66da-42f2-a3fd-cd2890059463=none,none,Switch to activity "Default"
 
 [KDE Keyboard Layout Switcher]
-Switch to Last-Used Keyboard Layout=Meta+Alt+L,Meta+Alt+L,Switch to Last-Used Keyboard Layout
-Switch to Next Keyboard Layout=Meta+Alt+K,Meta+Alt+K,Switch to Next Keyboard Layout
+Switch to Last-Used Keyboard Layout=Meta+Alt+L,Meta+Alt+L,
+Switch to Next Keyboard Layout=Meta+Alt+K,Meta+Alt+K,
 _k_friendly_name=Keyboard Layout Switcher
 
 [anomaly.hex]
@@ -209,14 +210,14 @@ view_zoom_in=Meta++\tMeta+=,Meta++\tMeta+=,Zoom In
 view_zoom_out=Meta+-,Meta+-,Zoom Out
 
 [kwin][$InverseAction]
-Cycle Overview Opposite=Cycle Overview
+Cycle Overview=Cycle Overview Opposite
 Decrease Opacity=Increase Opacity
-MoveZoomDown=MoveZoomUp
 MoveZoomRight=MoveZoomLeft
-Switch One Desktop Up=Switch One Desktop Down
+MoveZoomUp=MoveZoomDown
+Switch One Desktop Down=Switch One Desktop Up
 Switch One Desktop to the Left=Switch One Desktop to the Right
+Switch Window Down=Switch Window Up
 Switch Window Left=Switch Window Right
-Switch Window Up=Switch Window Down
 Switch to Next Screen=Switch to Previous Screen
 Switch to Previous Desktop=Switch to Next Desktop
 Switch to Screen Above=Switch to Screen Below
@@ -224,19 +225,19 @@ Switch to Screen to the Left=Switch to Screen to the Right
 Walk Through Windows=Walk Through Windows (Reverse)
 Walk Through Windows Alternative=Walk Through Windows Alternative (Reverse)
 Walk Through Windows of Current Application (Reverse)=Walk Through Windows of Current Application
-Walk Through Windows of Current Application Alternative=Walk Through Windows of Current Application Alternative (Reverse)
+Walk Through Windows of Current Application Alternative (Reverse)=Walk Through Windows of Current Application Alternative
+Window Grow Horizontal=Window Shrink Horizontal
 Window Lower=Window Raise
 Window One Desktop Up=Window One Desktop Down
-Window One Desktop to the Left=Window One Desktop to the Right
-Window One Screen Down=Window One Screen Up
+Window One Desktop to the Right=Window One Desktop to the Left
+Window One Screen Up=Window One Screen Down
 Window One Screen to the Left=Window One Screen to the Right
-Window Pack Left=Window Pack Right
+Window Pack Right=Window Pack Left
 Window Pack Up=Window Pack Down
-Window Shrink Horizontal=Window Grow Horizontal
 Window Shrink Vertical=Window Grow Vertical
-Window to Next Screen=Window to Previous Screen
 Window to Previous Desktop=Window to Next Desktop
-view_zoom_in=view_zoom_out
+Window to Previous Screen=Window to Next Screen
+view_zoom_out=view_zoom_in
 
 [mediacontrol]
 _k_friendly_name=Media Controller

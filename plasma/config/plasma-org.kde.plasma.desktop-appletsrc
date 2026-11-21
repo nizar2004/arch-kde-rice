@@ -142,6 +142,14 @@ plugin=org.kde.plasma.bluetooth
 immutability=1
 plugin=org.kde.kdeconnect
 
+[Containments][2][Applets][7][Applets][43]
+immutability=1
+plugin=org.kde.plasma.weather
+
+[Containments][2][Applets][7][Applets][44]
+immutability=1
+plugin=org.kde.plasma.printmanager
+
 [Containments][2][Applets][7][Applets][45]
 immutability=1
 plugin=org.kde.kupapplet
@@ -164,10 +172,10 @@ DialogWidth=810
 
 [Containments][2][Applets][7][General]
 disabledStatusNotifiers=Free Download Manager
-extraItems=org.kde.plasma.dwellclicker,org.kde.plasma.keyboardlayout,org.kde.plasma.networkmanagement,org.kde.plasma.volume,org.kde.plasma.cameraindicator,org.kde.plasma.battery,org.kde.plasma.manage-inputmethod,org.kde.plasma.devicenotifier,org.kde.plasma.brightness,org.kde.kdeconnect,org.kde.plasma.clipboard,org.kde.plasma.notifications,org.kde.kscreen
+extraItems=org.kde.plasma.dwellclicker,org.kde.plasma.keyboardlayout,org.kde.plasma.networkmanagement,org.kde.plasma.volume,org.kde.plasma.cameraindicator,org.kde.plasma.battery,org.kde.plasma.manage-inputmethod,org.kde.plasma.devicenotifier,org.kde.plasma.brightness,org.kde.plasma.clipboard,org.kde.plasma.notifications,org.kde.kscreen,org.kde.plasma.vault,org.kde.plasma.weather,org.kde.plasma.printmanager,org.kde.kupapplet,org.kde.plasma.bluetooth,org.kde.plasma.keyboardindicator
 hiddenItems=org.kde.kdeconnect,org.kde.plasma.clipboard,Cachy-Update,5WC8P5rqmt,JX629GHynV,speedifyui,ZapZap,Easy Effects,D2CV3mNxd-,org.kde.plasma.notifications,L7SbV9Lr1Z,ROG Control Center
 iconSpacing=1
-knownItems=org.kde.plasma.dwellclicker,org.kde.plasma.keyboardlayout,org.kde.plasma.clipboard,org.kde.plasma.mediacontroller,org.kde.plasma.networkmanagement,org.kde.plasma.volume,org.kde.plasma.cameraindicator,org.kde.plasma.battery,org.kde.plasma.manage-inputmethod,org.kde.plasma.devicenotifier,org.kde.plasma.brightness,org.kde.plasma.notifications,org.kde.kdeconnect,org.kde.kscreen
+knownItems=org.kde.plasma.dwellclicker,org.kde.plasma.keyboardlayout,org.kde.plasma.clipboard,org.kde.plasma.mediacontroller,org.kde.plasma.networkmanagement,org.kde.plasma.volume,org.kde.plasma.cameraindicator,org.kde.plasma.battery,org.kde.plasma.manage-inputmethod,org.kde.plasma.devicenotifier,org.kde.plasma.brightness,org.kde.plasma.notifications,org.kde.kscreen,org.kde.plasma.vault,org.kde.plasma.weather,org.kde.plasma.printmanager,org.kde.kupapplet,org.kde.plasma.bluetooth,org.kde.plasma.keyboardindicator
 
 [Containments][2][General]
 AppletOrder=28;4;33;41;40;42;6;7;23
@@ -216,12 +224,10 @@ url=file:///home/nizar/.local/share/applications/steam.desktop
 [Containments][35][General]
 AppletOrder=47;48;38;39
 
-[Containments][49]
-ItemGeometries-1280x720=
+[Containments][51]
 ItemGeometries-1707x1067=
-ItemGeometries-1920x1080=
 ItemGeometriesHorizontal=
-activityId=20c8c68f-2fee-43f9-a28d-3ea7339f74d6
+activityId=2fa24fee-66da-42f2-a3fd-cd2890059463
 formfactor=0
 immutability=1
 lastScreen=0
@@ -229,30 +235,21 @@ location=0
 plugin=org.kde.plasma.folder
 wallpaperplugin=org.kde.slideshow
 
-[Containments][49][ConfigDialog]
-DialogHeight=630
-DialogWidth=810
-
-[Containments][49][Wallpaper][org.kde.slideshow][General]
-Image=file:///home/nizar/Pictures/Wallpaper/__upscaled_upscaled.jpeg
+[Containments][51][Wallpaper][org.kde.slideshow][General]
+Image=file:///home/nizar/Pictures/Wallpaper/12.jpg
 SlideInterval=1800
 SlidePaths=/home/nizar/Pictures/Wallpaper/
 
-[Containments][50]
-ItemGeometries-1707x1067=
+[Containments][52]
 ItemGeometries-1920x1080=
 ItemGeometriesHorizontal=
-activityId=20c8c68f-2fee-43f9-a28d-3ea7339f74d6
+activityId=2fa24fee-66da-42f2-a3fd-cd2890059463
 formfactor=0
 immutability=1
 lastScreen=1
 location=0
 plugin=org.kde.plasma.folder
-wallpaperplugin=org.kde.slideshow
-
-[Containments][50][Wallpaper][org.kde.slideshow][General]
-SlideInterval=1800
-SlidePaths=/home/nizar/Pictures/Wallpaper/
+wallpaperplugin=org.kde.image
 
 [ScreenMapping]
 itemsOnDisabledScreens=
