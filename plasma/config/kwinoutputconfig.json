@@ -98,7 +98,7 @@
                 },
                 "overscan": 0,
                 "rgbRange": "Automatic",
-                "scale": 1,
+                "scale": 1.5,
                 "sdrBrightness": 200,
                 "sdrGamutWideness": 0,
                 "sharpness": 0,
@@ -131,7 +131,7 @@
                 "lidClosed": false,
                 "outputs": [
                     {
-                        "enabled": true,
+                        "enabled": false,
                         "outputIndex": 0,
                         "position": {
                             "x": 0,
@@ -141,13 +141,28 @@
                         "replicationSource": ""
                     },
                     {
-                        "enabled": false,
+                        "enabled": true,
                         "outputIndex": 1,
                         "position": {
                             "x": 0,
                             "y": 0
                         },
                         "priority": 1,
+                        "replicationSource": ""
+                    }
+                ]
+            },
+            {
+                "lidClosed": false,
+                "outputs": [
+                    {
+                        "enabled": true,
+                        "outputIndex": 1,
+                        "position": {
+                            "x": 0,
+                            "y": 0
+                        },
+                        "priority": 0,
                         "replicationSource": ""
                     }
                 ]
