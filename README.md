@@ -45,6 +45,7 @@ Other flags: `--dir <path>` (where to clone, default `~/dotfiles`), `--repo <url
 | ⚡ **Fetch** | Custom **fastfetch** profile. |
 | 🖼️ **Wallpapers** | `~/Pictures/Wallpaper/` wired to Plasma's **Slideshow** engine. |
 | 🔋 **Power & lock** | **Never sleeps** (any power source), **screen off after 1 h** of inactivity, **lid close on AC → screen off only**, **no lock screen and no password** — enforced in `powerdevilrc` + `kscreenlockerrc` and applied live during `restore`. |
+| 🎛️ **ASUS / ROG** | `restore` installs **rog-control-center**, **asusctl**, **discord** and **power-profiles-daemon** via pacman, then enables the PPD service and restarts `asusd`. |
 
 ## 🗂️ Repository layout
 
@@ -92,7 +93,7 @@ Rebuilds everything on a fresh **Arch + KDE Plasma** install:
 $ restore
 ┳━ Phase 0 · sanity & privileges
 ┃  ▸ asking for sudo once …
-┳━ Phase 1 · dependencies & default shell   # pacman + oh-my-posh + chsh fish
+┳━ Phase 1 · dependencies & default shell   # pacman + ASUS/ROG apps + oh-my-posh + chsh fish
 ┳━ Phase 2 · fonts & terminal configuration # fish, oh-my-posh, ghostty, fastfetch
 ┳━ Phase 3 · wallpapers                        # → ~/Pictures/Wallpaper/ + org.kde.slideshow
 ┳━ Phase 4 · Plasma UI, panels & taskbar icons  # widgets, layout, icon size 29

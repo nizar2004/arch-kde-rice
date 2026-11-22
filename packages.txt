@@ -8,6 +8,11 @@ curl
 unzip
 fontconfig
 rsync
+# ASUS / ROG & daily apps (phase 1, second step)
+rog-control-center
+asusctl
+discord
+power-profiles-daemon
 # optional: nicer spinners/boxes (the UI falls back to pure ANSI without it)
 gum
 # oh-my-posh is installed from its official installer (or AUR: oh-my-posh-bin)

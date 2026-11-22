@@ -3,7 +3,7 @@
 #  restore — rebuild this Arch + KDE Plasma rice on a fresh install
 #
 #  Phase 0  sanity + one sudo prompt
-#  Phase 1  packages, oh-my-posh, fish as the login shell
+#  Phase 1  packages (incl. rog-control-center/asusctl/discord), oh-my-posh, fish shell
 #  Phase 2  fonts + terminal configs (fish, oh-my-posh, ghostty, fastfetch)
 #  Phase 3  wallpapers + Plasma slideshow engine
 #  Phase 4  Plasma UI: widgets, vertical panel layout, taskbar icon size 29
@@ -59,6 +59,25 @@ fi
 phase 1 6 "dependencies & default shell"
 PKGS=(fish fastfetch ghostty ttf-meslo-nerd git curl unzip fontconfig rsync)
 spin_run "pacman · installing ${#PKGS[@]} packages" -- sudo pacman -S --needed --noconfirm "${PKGS[@]}"
+
+# ── ASUS / ROG & daily apps (all in the official repos) ───────────────────────
+# rog-control-center + asusctl drive the ASUS hardware (asusd daemon), discord
+# for chat, power-profiles-daemon for Plasma's performance profiles. Installed
+# one by one so a missing repo can't take the whole phase down.
+ASUS_PKGS=(rog-control-center asusctl discord power-profiles-daemon)
+step "ASUS / ROG & apps · rog-control-center, asusctl, discord, power-profiles-daemon"
+for p in "${ASUS_PKGS[@]}"; do
+    spin_run "pacman · $p" -- sudo pacman -S --needed --noconfirm "$p" \
+        || warn "$p could not be installed (not in your repos?)"
+done
+
+step "power & ASUS services"
+spin_run "systemctl enable --now power-profiles-daemon" \
+    -- sudo systemctl enable --now power-profiles-daemon \
+    || warn "could not enable power-profiles-daemon"
+spin_run "systemctl restart asusd" \
+    -- sudo systemctl restart asusd \
+    || warn "could not restart asusd (is asusctl installed?)"
 
 if ! command -v oh-my-posh >/dev/null 2>&1; then
     step "installing oh-my-posh"
