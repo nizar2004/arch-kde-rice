@@ -4,8 +4,8 @@
 #
 #  Captures: fish / oh-my-posh / ghostty / fastfetch / Konsole configs, the
 #  Plasma panel layout + widget configs, custom plasmoids, the
-#  small-taskbar-icon theme, launcher icons, fonts and wallpapers — then
-#  commits and pushes.
+#  small-taskbar-icon theme, launcher icons, fonts and wallpapers, the
+#  power/screen-lock policy — then commits and pushes.
 #
 #  Usage:  backup [--no-push] [--message "…"]
 # =============================================================================
@@ -104,7 +104,7 @@ fi
 phase 3 5 "Plasma configuration"
 for f in plasma-org.kde.plasma.desktop-appletsrc plasmashellrc plasmarc kwinrc \
          kdeglobals kglobalshortcutsrc klauncherrc kwinoutputconfig.json \
-         plasmanotifyrc plasma-localerc; do
+         plasmanotifyrc plasma-localerc powerdevilrc kscreenlockerrc; do
     copyfile "$HOME/.config/$f" "plasma/config/$f"
 done
 mirror "$HOME/.config/kdedefaults" plasma/config/kdedefaults

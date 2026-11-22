@@ -7,6 +7,7 @@
 #  Phase 2  fonts + terminal configs (fish, oh-my-posh, ghostty, fastfetch)
 #  Phase 3  wallpapers + Plasma slideshow engine
 #  Phase 4  Plasma UI: widgets, vertical panel layout, taskbar icon size 29
+#  Phase 5  power: no sleep · screen off after 1 h · lid close → screen off · no password
 #
 #  Usage:  restore [--dry-run]
 # =============================================================================
@@ -21,7 +22,7 @@ DRY=0
 while [ $# -gt 0 ]; do
     case "$1" in
         --dry-run) DRY=1 ;;
-        -h|--help) sed -n '2,12p' "$SELF" | sed 's/^# \{0,1\}//'; exit 0 ;;
+        -h|--help) sed -n '2,13p' "$SELF" | sed 's/^# \{0,1\}//'; exit 0 ;;
         *) echo "restore: unknown option: $1 (try --help)" >&2; exit 2 ;;
     esac
     shift
@@ -29,6 +30,9 @@ done
 
 # shared Catppuccin TUI (gum-accelerated when available)
 . "$BIN_DIR/lib/tui.sh"
+
+# shorthand colors used by the "(dry)" printf lines (tui.sh only defines C_*)
+D="$C_DIM" R="$C_RESET"
 
 banner "arch-kde-rice · restore" "rebuild the rice on a fresh Arch + KDE install"
 
@@ -52,7 +56,7 @@ else
 fi
 
 # ── Phase 1: dependencies & shell ─────────────────────────────────────────────
-phase 1 5 "dependencies & default shell"
+phase 1 6 "dependencies & default shell"
 PKGS=(fish fastfetch ghostty ttf-meslo-nerd git curl unzip fontconfig rsync)
 spin_run "pacman · installing ${#PKGS[@]} packages" -- sudo pacman -S --needed --noconfirm "${PKGS[@]}"
 
@@ -142,7 +146,7 @@ set_os_install_date() {
 set_os_install_date
 
 # ── Phase 2: fonts & terminal configs ─────────────────────────────────────────
-phase 2 5 "fonts & terminal configuration"
+phase 2 6 "fonts & terminal configuration"
 
 if [ -n "$(ls -A "$DOTFILES/fonts" 2>/dev/null | grep -v '^\.gitkeep$' || true)" ]; then
     step "deploying user fonts → ~/.local/share/fonts"
@@ -174,7 +178,7 @@ deploy_tree config/konsole     "$HOME/.local/share/konsole"   # Konsole profile 
 deploy_tree config/konsolerc   "$HOME/.config/konsolerc"      # default profile selection
 
 # ── Phase 3: wallpapers & slideshow ───────────────────────────────────────────
-phase 3 5 "wallpapers"
+phase 3 6 "wallpapers"
 WALL_DIR="$HOME/Pictures/Wallpaper"                  # note: singular
 WALL_PATH="/home/$USER/Pictures/Wallpaper/"          # plain path — what Plasma stores
 LEGACY_WALL_DIR="$HOME/Pictures/Wallpapers"          # older name, merged if present
@@ -204,7 +208,7 @@ fi
 warn "the slideshow is applied in Phase 4, after the Plasma config is deployed"
 
 # ── Phase 4: Plasma UI & layout ───────────────────────────────────────────────
-phase 4 5 "Plasma UI, panels & taskbar icons"
+phase 4 6 "Plasma UI, panels & taskbar icons"
 
 # plasmashell keeps the entire layout in memory and writes it back when it
 # exits. Deploying a config while it runs therefore gets clobbered on the next
@@ -356,8 +360,63 @@ else
     printf '      %s(dry) evaluateScript: desktops() → org.kde.slideshow%s\n' "$D" "$R"
 fi
 
+# ── Phase 5: power, screen & lock ─────────────────────────────────────────────
+# Exactly what this rice wants from a laptop:
+#   · never sleep on idle (any power source — the PC keeps running)
+#   · screen turns off after 1 h of inactivity
+#   · closing the lid while plugged in → screen off only (no sleep)
+#   · never lock the screen, never ask for a password
+# Values verified against the Plasma 6.8 powerdevil schema:
+#   AutoSuspendAction / LidAction (PowerButtonAction):
+#     NoAction=0  Sleep=1  Hibernate=2  Shutdown=8  LockScreen=32
+#     TurnOffScreen=64  ToggleScreenOnOff=128
+#   idle timeouts are SECONDS in the Plasma 6.8 schema
+phase 5 6 "power: no sleep · screen off after 1 h · no password"
+
+POWER_KW="$(command -v kwriteconfig6 || true)"
+if [ -z "$POWER_KW" ]; then
+    warn "kwriteconfig6 not found — power & lock settings skipped"
+elif [ "$DRY" -eq 1 ]; then
+    dry "powerdevilrc: AutoSuspendAction=0 (AC/Battery/LowBattery), LidAction=64 (AC)"
+    dry "powerdevilrc: TurnOffDisplayWhenIdle=true + TurnOffDisplayIdleTimeoutSec=3600 + LockBeforeTurnOffDisplay=false"
+    dry "kscreenlockerrc: Autolock=false, Timeout=0, LockOnResume=false, RequirePassword=false"
+else
+    step "never sleep on idle · screen off after 1 h (AC, Battery, LowBattery)"
+    for p in AC Battery LowBattery; do
+        "$POWER_KW" --file powerdevilrc --group "$p" --group SuspendAndShutdown --key AutoSuspendAction 0
+        "$POWER_KW" --file powerdevilrc --group "$p" --group Display --key TurnOffDisplayWhenIdle true
+        "$POWER_KW" --file powerdevilrc --group "$p" --group Display --key TurnOffDisplayIdleTimeoutSec 3600
+        "$POWER_KW" --file powerdevilrc --group "$p" --group Display --key LockBeforeTurnOffDisplay false
+    done
+    ok "idle: PC keeps running, screen off after 1 h (never locked first)"
+
+    step "closing the lid on AC → screen off only"
+    "$POWER_KW" --file powerdevilrc --group AC --group SuspendAndShutdown --key LidAction 64
+    ok "LidAction=TurnOffScreen (64) on the AC profile"
+
+    step "never lock, never ask for a password"
+    "$POWER_KW" --file kscreenlockerrc --group Daemon --key Autolock false
+    "$POWER_KW" --file kscreenlockerrc --group Daemon --key Timeout 0
+    "$POWER_KW" --file kscreenlockerrc --group Daemon --key LockOnResume false
+    "$POWER_KW" --file kscreenlockerrc --group Daemon --key RequirePassword false
+    ok "screen locker: no idle lock, no lock on wake, no password"
+
+    step "applying live (powerdevil restart + locker reload)"
+    systemctl --user restart plasma-powerdevil.service 2>/dev/null || true
+    qdbus6 org.kde.screensaver /ScreenSaver configure 2>/dev/null || true
+    ok "settings are live"
+
+    step "verifying the live state"
+    LID="$(qdbus6 org.kde.Solid.PowerManagement \
+                /org/kde/Solid/PowerManagement/Actions/HandleButtonEvents \
+                org.kde.Solid.PowerManagement.Actions.HandleButtonEvents.lidAction 2>/dev/null || echo '?')"
+    NOK="$(kreadconfig6 --file kscreenlockerrc --group Daemon --key RequirePassword 2>/dev/null || echo '?')"
+    if [ "$LID" = "64" ]; then ok "lid close = screen off (LidAction=$LID) ✔"; else warn "LidAction=$LID (expected 64)"; fi
+    if [ "$NOK" = "false" ]; then ok "RequirePassword=$NOK ✔"; else warn "RequirePassword=$NOK (expected false)"; fi
+fi
+
 # ── install the global commands ───────────────────────────────────────────────
-phase 5 5 "global commands"
+phase 6 6 "global commands"
 for c in backup restore; do
     spin_run "/usr/local/bin/$c → $DOTFILES/bin/$c" -- sudo ln -sf "$DOTFILES/bin/$c" "/usr/local/bin/$c"
 done

@@ -44,6 +44,7 @@ Other flags: `--dir <path>` (where to clone, default `~/dotfiles`), `--repo <url
 | 🖥️ **Terminal** | **Ghostty** config (Tokyo Night-ish palette, Meslo Nerd Font) **and** a **Konsole** profile with `Command=/usr/bin/fish`. |
 | ⚡ **Fetch** | Custom **fastfetch** profile. |
 | 🖼️ **Wallpapers** | `~/Pictures/Wallpaper/` wired to Plasma's **Slideshow** engine. |
+| 🔋 **Power & lock** | **Never sleeps** (any power source), **screen off after 1 h** of inactivity, **lid close on AC → screen off only**, **no lock screen and no password** — enforced in `powerdevilrc` + `kscreenlockerrc` and applied live during `restore`. |
 
 ## 🗂️ Repository layout
 
@@ -59,7 +60,7 @@ Other flags: `--dir <path>` (where to clone, default `~/dotfiles`), `--repo <url
 │   ├── ghostty/          # → ~/.config/ghostty
 │   └── fastfetch/        # → ~/.config/fastfetch
 ├── plasma/
-│   ├── config/           # appletsrc, plasmashellrc, plasmarc, kwinrc, kdeglobals, …
+│   ├── config/           # appletsrc, plasmashellrc, plasmarc, kwinrc, kdeglobals, powerdevilrc, kscreenlockerrc, …
 │   ├── data/
 │   │   ├── plasmoids/    # com.cyberbessa.verticalclock, com.nizar.dashboard
 │   │   └── plasma_icons/ # panel launcher icons
@@ -95,7 +96,8 @@ $ restore
 ┳━ Phase 2 · fonts & terminal configuration # fish, oh-my-posh, ghostty, fastfetch
 ┳━ Phase 3 · wallpapers                        # → ~/Pictures/Wallpaper/ + org.kde.slideshow
 ┳━ Phase 4 · Plasma UI, panels & taskbar icons  # widgets, layout, icon size 29
-┳━ Phase 5 · global commands
+┳━ Phase 5 · power & lock screen             # no sleep, screen off 1 h, lid → screen off, no password
+┳━ Phase 6 · global commands
 ```
 
 Use `restore --dry-run` to preview every action without changing anything.
