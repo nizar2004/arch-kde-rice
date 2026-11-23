@@ -139,7 +139,29 @@ fi
 
 if [ "$PUSH" -eq 1 ]; then
     if git rev-parse --abbrev-ref --symbolic-full-name '@{u}' >/dev/null 2>&1; then
-        if [ "$CHANGED" -eq 1 ]; then
+        # The remote can carry commits made outside this script (another
+        # machine, the web UI, a manual "restore:" change).  Rebase the
+        # snapshot on top of them — otherwise git refuses the push with
+        # "! [rejected] … (fetch first)" because the branches diverged.
+        if git fetch -q origin "$BRANCH" 2>/dev/null; then
+            BEHIND="$(git rev-list --count "HEAD..origin/$BRANCH" 2>/dev/null || echo 0)"
+            if [ "${BEHIND:-0}" -gt 0 ]; then
+                info "origin/$BRANCH has $BEHIND newer commit(s) — rebasing the snapshot"
+                if git rebase "origin/$BRANCH" >/dev/null 2>&1; then
+                    ok "rebased onto origin/$BRANCH"
+                else
+                    git rebase --abort >/dev/null 2>&1 || true
+                    die "rebase conflict — resolve with: git -C \"$DOTFILES\" pull --rebase"
+                fi
+            fi
+        else
+            warn "could not reach origin — pushing anyway"
+        fi
+
+        # push whenever local commits are missing on the remote (the snapshot
+        # may have failed to push earlier, even with nothing changed now)
+        AHEAD="$(git rev-list --count "origin/$BRANCH..HEAD" 2>/dev/null || echo 0)"
+        if [ "${AHEAD:-0}" -gt 0 ]; then
             spin_run "pushed to origin/$BRANCH" -- git push -q origin "HEAD:$BRANCH"
         else
             info "already up to date — nothing to push"
