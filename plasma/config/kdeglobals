@@ -141,11 +141,11 @@ TerminalService=com.mitchellh.ghostty.desktop
 XftAntialias=true
 XftHintStyle=hintslight
 XftSubPixel=none
-fixed=MesloLGS Nerd Font Mono,10,-1,5,400,0,0,0,0,0,0,0,0,0,0,1,,0,0
-font=Inter Display,10,-1,5,400,0,0,0,0,0,0,0,0,0,0,1,,0,0
-menuFont=Inter Display,10,-1,5,400,0,0,0,0,0,0,0,0,0,0,1,,0,0
-smallestReadableFont=Inter Display,8,-1,5,400,0,0,0,0,0,0,0,0,0,0,1,,0,0
-toolBarFont=Inter Display,10,-1,5,400,0,0,0,0,0,0,0,0,0,0,1,,0,0
+fixed=Adwaita Mono,10,-1,5,400,0,0,0,0,0,0,0,0,0,0,1,,0,0
+font=Adwaita Sans,10,-1,5,400,0,0,0,0,0,0,0,0,0,0,1,,0,0
+menuFont=Adwaita Sans,10,-1,5,400,0,0,0,0,0,0,0,0,0,0,1,,0,0
+smallestReadableFont=Adwaita Sans,8,-1,5,400,0,0,0,0,0,0,0,0,0,0,1,,0,0
+toolBarFont=Adwaita Sans,10,-1,5,400,0,0,0,0,0,0,0,0,0,0,1,,0,0
 
 [KDE]
 LookAndFeelPackage=org.kde.breezedark.desktop
@@ -175,7 +175,7 @@ Theme=freedawn-white
 [WM]
 activeBackground=18,18,20
 activeBlend=232,234,238
-activeFont=Inter Display,10,-1,5,400,0,0,0,0,0,0,0,0,0,0,1,,0,0
+activeFont=Adwaita Sans,10,-1,5,400,0,0,0,0,0,0,0,0,0,0,1,,0,0
 activeForeground=232,234,238
 inactiveBackground=12,12,14
 inactiveBlend=116,120,128
