@@ -141,6 +141,7 @@ TerminalService=com.mitchellh.ghostty.desktop
 XftAntialias=true
 XftHintStyle=hintslight
 XftSubPixel=none
+fixed=MesloLGS Nerd Font Mono,10,-1,5,400,0,0,0,0,0,0,0,0,0,0,1,,0,0
 font=Inter Display,10,-1,5,400,0,0,0,0,0,0,0,0,0,0,1,,0,0
 menuFont=Inter Display,10,-1,5,400,0,0,0,0,0,0,0,0,0,0,1,,0,0
 smallestReadableFont=Inter Display,8,-1,5,400,0,0,0,0,0,0,0,0,0,0,1,,0,0

@@ -216,15 +216,25 @@ url=file:///usr/share/applications/discord.desktop
 [Containments][35][Applets][48]
 immutability=1
 plugin=org.kde.plasma.icon
+transient=true
 
 [Containments][35][Applets][48][Configuration]
 localPath=/home/nizar/.local/share/plasma_icons/steam.desktop
 url=file:///home/nizar/.local/share/applications/steam.desktop
 
+[Containments][35][Applets][53]
+immutability=1
+plugin=org.kde.plasma.icon
+
+[Containments][35][Applets][53][Configuration]
+localPath=/home/nizar/.local/share/plasma_icons/steam (1).desktop
+url=desktop:/steam.desktop
+
 [Containments][35][General]
-AppletOrder=47;48;38;39
+AppletOrder=47;53;38;39
 
 [Containments][51]
+ItemGeometries-1280x720=
 ItemGeometries-1707x1067=
 ItemGeometriesHorizontal=
 activityId=2fa24fee-66da-42f2-a3fd-cd2890059463
@@ -240,7 +250,7 @@ DialogHeight=630
 DialogWidth=810
 
 [Containments][51][Wallpaper][org.kde.slideshow][General]
-Image=file:///home/nizar/Pictures/Wallpaper/2.jpg
+Image=file:///home/nizar/Pictures/Wallpaper/Cat.jpg
 SlideInterval=1800
 SlidePaths=/home/nizar/Pictures/Wallpaper/
 

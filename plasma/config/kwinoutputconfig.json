@@ -131,7 +131,7 @@
                 "lidClosed": false,
                 "outputs": [
                     {
-                        "enabled": false,
+                        "enabled": true,
                         "outputIndex": 0,
                         "position": {
                             "x": 0,
@@ -141,7 +141,7 @@
                         "replicationSource": ""
                     },
                     {
-                        "enabled": true,
+                        "enabled": false,
                         "outputIndex": 1,
                         "position": {
                             "x": 0,
@@ -163,6 +163,31 @@
                             "y": 0
                         },
                         "priority": 0,
+                        "replicationSource": ""
+                    }
+                ]
+            },
+            {
+                "lidClosed": true,
+                "outputs": [
+                    {
+                        "enabled": true,
+                        "outputIndex": 0,
+                        "position": {
+                            "x": 0,
+                            "y": 0
+                        },
+                        "priority": 1,
+                        "replicationSource": ""
+                    },
+                    {
+                        "enabled": false,
+                        "outputIndex": 1,
+                        "position": {
+                            "x": 0,
+                            "y": 0
+                        },
+                        "priority": 1,
                         "replicationSource": ""
                     }
                 ]
