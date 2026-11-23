@@ -213,15 +213,6 @@ plugin=org.kde.plasma.icon
 localPath=/home/nizar/.local/share/plasma_icons/discord.desktop
 url=file:///usr/share/applications/discord.desktop
 
-[Containments][35][Applets][48]
-immutability=1
-plugin=org.kde.plasma.icon
-transient=true
-
-[Containments][35][Applets][48][Configuration]
-localPath=/home/nizar/.local/share/plasma_icons/steam.desktop
-url=file:///home/nizar/.local/share/applications/steam.desktop
-
 [Containments][35][Applets][53]
 immutability=1
 plugin=org.kde.plasma.icon
