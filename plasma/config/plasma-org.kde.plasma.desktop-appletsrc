@@ -60,6 +60,13 @@ plugin=com.cyberbessa.verticalclock
 popupHeight=450
 popupWidth=525
 
+[Containments][2][Applets][40][Configuration][ConfigDialog]
+DialogHeight=630
+DialogWidth=810
+
+[Containments][2][Applets][40][Configuration][General]
+showWeekday=true
+
 [Containments][2][Applets][41]
 immutability=1
 plugin=org.kde.plasma.panelspacer
@@ -241,7 +248,7 @@ DialogHeight=630
 DialogWidth=810
 
 [Containments][51][Wallpaper][org.kde.slideshow][General]
-Image=file:///home/nizar/Pictures/Wallpaper/Cat.jpg
+Image=file:///home/nizar/Pictures/Wallpaper/cutout.png
 SlideInterval=1800
 SlidePaths=/home/nizar/Pictures/Wallpaper/
 
