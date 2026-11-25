@@ -121,6 +121,10 @@ It runs automatically on `restore`, and a systemd user **path unit**
 phone and the commands appear with no action needed. Devices that already
 have their own commands are never touched.
 
+Both `install.sh` and `restore` ask **"Install KDE Connect + phone remote
+commands? [Y/n]"** — answer `n` and the package, the phase and the watcher
+are all skipped. Changed your mind later? Run `RICE_KDECONNECT=1 restore`.
+
 > The KDE Connect command list is a Qt `QSettings` file: the value must be
 > written in Qt's `@ByteArray(…)` encoding or it silently reads back empty —
 > this script handles that for you.

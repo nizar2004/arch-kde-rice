@@ -108,11 +108,30 @@ else
 fi
 [ -x "$DEST/bin/restore" ] || die "no bin/restore inside $DEST"
 
-# ── [2/3] global commands ─────────────────────────────────────────────────────
-phase 2 3 "global commands"
+# ── [2/3] global commands & options ──────────────────────────────────────────
+phase 2 3 "global commands & options"
 step "asking for sudo once (to link /usr/local/bin)"
 sudo -v || die "sudo was not granted"
-for c in backup restore kdeconnect-sync; do
+
+# KDE Connect + the phone remote commands: opt-in (restore asks again if you
+# run it directly later). Non-interactive installs default to yes.
+RUN_KDECONNECT=1
+if [ "$RUN_RESTORE" -eq 1 ]; then
+    reply=""
+    if read -r -p "   Install KDE Connect + phone remote commands? [Y/n] " reply </dev/tty 2>/dev/null; then
+        case "$reply" in n|N|no|NO) RUN_KDECONNECT=0 ;; esac
+    fi
+    if [ "$RUN_KDECONNECT" = 1 ]; then
+        ok "KDE Connect + phone remote commands: yes"
+    else
+        warn "KDE Connect + phone remote commands: no"
+    fi
+fi
+export RICE_KDECONNECT="$RUN_KDECONNECT"
+
+CMDS=(backup restore)
+[ "$RUN_KDECONNECT" = 1 ] && CMDS+=(kdeconnect-sync)
+for c in "${CMDS[@]}"; do
     spin_run "/usr/local/bin/$c → $DEST/bin/$c" -- sudo ln -sf "$DEST/bin/$c" "/usr/local/bin/$c"
 done
 

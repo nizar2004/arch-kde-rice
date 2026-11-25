@@ -56,6 +56,24 @@ else
     trap 'kill "$SUDO_KEEP" 2>/dev/null || true' EXIT
 fi
 
+# ── your choice: KDE Connect + phone remote commands? ─────────────────────────
+# install.sh asks this too and passes the answer in RICE_KDECONNECT; when you
+# run `restore` directly the question is asked here. Default: yes.
+if [ -z "${RICE_KDECONNECT:-}" ]; then
+    reply=""
+    if read -r -p "   Install KDE Connect + phone remote commands? [Y/n] " reply </dev/tty 2>/dev/null; then
+        case "$reply" in n|N|no|NO) RICE_KDECONNECT=0 ;; *) RICE_KDECONNECT=1 ;; esac
+    else
+        RICE_KDECONNECT=1
+    fi
+fi
+export RICE_KDECONNECT
+if [ "$RICE_KDECONNECT" = 1 ]; then
+    ok "KDE Connect + phone remote commands: yes"
+else
+    warn "KDE Connect + phone remote commands: no — phase 6 will be skipped"
+fi
+
 # ── Phase 1: dependencies & shell ─────────────────────────────────────────────
 phase 1 6 "dependencies & default shell"
 PKGS=(fish fastfetch ghostty ttf-meslo-nerd git curl unzip fontconfig rsync)
@@ -66,8 +84,9 @@ spin_run "pacman · installing ${#PKGS[@]} packages" -- sudo pacman -S --needed 
 # for chat, power-profiles-daemon for Plasma's performance profiles and
 # kdeconnect so the phone can run remote commands (phase 6). Installed one by
 # one so a missing repo can't take the whole phase down.
-ASUS_PKGS=(rog-control-center asusctl discord power-profiles-daemon kdeconnect)
-step "ASUS / ROG & apps · rog-control-center, asusctl, discord, power-profiles-daemon, kdeconnect"
+ASUS_PKGS=(rog-control-center asusctl discord power-profiles-daemon)
+if [ "$RICE_KDECONNECT" = 1 ]; then ASUS_PKGS+=(kdeconnect); fi
+step "ASUS / ROG & apps · rog-control-center, asusctl, discord, power-profiles-daemon$( [ "$RICE_KDECONNECT" = 1 ] && printf ', kdeconnect' )"
 for p in "${ASUS_PKGS[@]}"; do
     spin_run "pacman · $p" -- sudo pacman -S --needed --noconfirm "$p" \
         || warn "$p could not be installed (not in your repos?)"
@@ -446,15 +465,17 @@ fi
 # panel, HDMI*/DP* = external), so this works unchanged on any machine.
 phase 6 7 "KDE Connect · remote commands"
 
-run mkdir -p "$HOME/.local/bin" "$HOME/.config/systemd/user" "$HOME/.config/kdeconnect"
-
-if [ "$DRY" -eq 1 ]; then
+if [ "$RICE_KDECONNECT" != 1 ]; then
+    info "skipped — KDE Connect was declined (run: RICE_KDECONNECT=1 restore to add it later)"
+elif [ "$DRY" -eq 1 ]; then
     dry "link ~/.local/bin/kc-display → bin/kc-display"
     dry "link /usr/local/bin/kdeconnect-sync → bin/kdeconnect-sync"
     dry "install rice-kdeconnect-sync.{service,path} → ~/.config/systemd/user"
     dry "systemctl --user enable --now rice-kdeconnect-sync.path"
     dry "run kdeconnect-sync (adds the commands to every paired device)"
 else
+    run mkdir -p "$HOME/.local/bin" "$HOME/.config/systemd/user" "$HOME/.config/kdeconnect"
+
     step "display switcher → ~/.local/bin/kc-display"
     run ln -sf "$DOTFILES/bin/kc-display" "$HOME/.local/bin/kc-display"
     ok "kc-display installed (main / external / status)"
@@ -476,7 +497,9 @@ fi
 
 # ── install the global commands ───────────────────────────────────────────────
 phase 7 7 "global commands"
-for c in backup restore kdeconnect-sync; do
+CMDS=(backup restore)
+[ "$RICE_KDECONNECT" = 1 ] && CMDS+=(kdeconnect-sync)
+for c in "${CMDS[@]}"; do
     spin_run "/usr/local/bin/$c → $DOTFILES/bin/$c" -- sudo ln -sf "$DOTFILES/bin/$c" "/usr/local/bin/$c"
 done
 
