@@ -112,7 +112,7 @@ fi
 phase 2 3 "global commands"
 step "asking for sudo once (to link /usr/local/bin)"
 sudo -v || die "sudo was not granted"
-for c in backup restore; do
+for c in backup restore kdeconnect-sync; do
     spin_run "/usr/local/bin/$c → $DEST/bin/$c" -- sudo ln -sf "$DEST/bin/$c" "/usr/local/bin/$c"
 done
 

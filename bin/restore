@@ -3,11 +3,12 @@
 #  restore — rebuild this Arch + KDE Plasma rice on a fresh install
 #
 #  Phase 0  sanity + one sudo prompt
-#  Phase 1  packages (incl. rog-control-center/asusctl/discord), oh-my-posh, fish shell
+#  Phase 1  packages (incl. rog-control-center/asusctl/discord/kdeconnect), oh-my-posh, fish shell
 #  Phase 2  fonts + terminal configs (fish, oh-my-posh, ghostty, fastfetch)
 #  Phase 3  wallpapers + Plasma slideshow engine
 #  Phase 4  Plasma UI: widgets, vertical panel layout, taskbar icon size 29
 #  Phase 5  power: no sleep · screen off after 1 h · lid close → screen off · no password
+#  Phase 6  KDE Connect: remote commands (shutdown + display switches) on every paired phone
 #
 #  Usage:  restore [--dry-run]
 # =============================================================================
@@ -62,10 +63,11 @@ spin_run "pacman · installing ${#PKGS[@]} packages" -- sudo pacman -S --needed 
 
 # ── ASUS / ROG & daily apps (all in the official repos) ───────────────────────
 # rog-control-center + asusctl drive the ASUS hardware (asusd daemon), discord
-# for chat, power-profiles-daemon for Plasma's performance profiles. Installed
-# one by one so a missing repo can't take the whole phase down.
-ASUS_PKGS=(rog-control-center asusctl discord power-profiles-daemon)
-step "ASUS / ROG & apps · rog-control-center, asusctl, discord, power-profiles-daemon"
+# for chat, power-profiles-daemon for Plasma's performance profiles and
+# kdeconnect so the phone can run remote commands (phase 6). Installed one by
+# one so a missing repo can't take the whole phase down.
+ASUS_PKGS=(rog-control-center asusctl discord power-profiles-daemon kdeconnect)
+step "ASUS / ROG & apps · rog-control-center, asusctl, discord, power-profiles-daemon, kdeconnect"
 for p in "${ASUS_PKGS[@]}"; do
     spin_run "pacman · $p" -- sudo pacman -S --needed --noconfirm "$p" \
         || warn "$p could not be installed (not in your repos?)"
@@ -434,9 +436,47 @@ else
     if [ "$NOK" = "false" ]; then ok "RequirePassword=$NOK ✔"; else warn "RequirePassword=$NOK (expected false)"; fi
 fi
 
+# ── Phase 6: KDE Connect · remote commands ────────────────────────────────────
+# Installs three commands the phone can run from the KDE Connect app:
+#   · Shut down PC               → systemctl poweroff
+#   · Display: main screen only  → kc-display main
+#   · Display: HDMI screen only  → kc-display external
+# A user path unit re-installs them automatically whenever a new device is
+# paired. kc-display auto-detects the outputs at run time (eDP* = laptop
+# panel, HDMI*/DP* = external), so this works unchanged on any machine.
+phase 6 7 "KDE Connect · remote commands"
+
+run mkdir -p "$HOME/.local/bin" "$HOME/.config/systemd/user" "$HOME/.config/kdeconnect"
+
+if [ "$DRY" -eq 1 ]; then
+    dry "link ~/.local/bin/kc-display → bin/kc-display"
+    dry "link /usr/local/bin/kdeconnect-sync → bin/kdeconnect-sync"
+    dry "install rice-kdeconnect-sync.{service,path} → ~/.config/systemd/user"
+    dry "systemctl --user enable --now rice-kdeconnect-sync.path"
+    dry "run kdeconnect-sync (adds the commands to every paired device)"
+else
+    step "display switcher → ~/.local/bin/kc-display"
+    run ln -sf "$DOTFILES/bin/kc-display" "$HOME/.local/bin/kc-display"
+    ok "kc-display installed (main / external / status)"
+
+    step "pairing watcher → ~/.config/systemd/user"
+    for u in rice-kdeconnect-sync.service rice-kdeconnect-sync.path; do
+        cp -a "$DOTFILES/systemd/user/$u" "$HOME/.config/systemd/user/$u"
+    done
+    systemctl --user daemon-reload
+    systemctl --user enable --now rice-kdeconnect-sync.path 2>/dev/null || true
+    ok "watching ~/.config/kdeconnect — new pairings get the commands automatically"
+
+    step "installing the commands on every paired device"
+    "$DOTFILES/bin/kdeconnect-sync" || warn "kdeconnect-sync had a hiccup — run it again later"
+    if ! pgrep -x kdeconnectd >/dev/null 2>&1; then
+        info "kdeconnectd is not running yet — commands will be pushed on first pairing"
+    fi
+fi
+
 # ── install the global commands ───────────────────────────────────────────────
-phase 6 6 "global commands"
-for c in backup restore; do
+phase 7 7 "global commands"
+for c in backup restore kdeconnect-sync; do
     spin_run "/usr/local/bin/$c → $DOTFILES/bin/$c" -- sudo ln -sf "$DOTFILES/bin/$c" "/usr/local/bin/$c"
 done
 

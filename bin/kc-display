@@ -1,0 +1,109 @@
+#!/usr/bin/env bash
+# =============================================================================
+#  kc-display — switch KDE Wayland displays (used by KDE Connect remote cmds)
+#
+#      kc-display main      → laptop panel (eDP*) only
+#      kc-display external  → external monitor (HDMI*, then DP*) only
+#      kc-display hdmi      → alias for "external"
+#      kc-display status    → print the current outputs
+#
+#  Output names are detected at run time, so the same command works on any
+#  machine — a fresh restore gets working display switches with no editing.
+# =============================================================================
+set -euo pipefail
+
+MODE="${1:-}"
+case "$MODE" in
+    main|external|hdmi|status) ;;
+    *) echo "usage: kc-display <main|external|hdmi|status>" >&2; exit 2 ;;
+esac
+command -v kscreen-doctor >/dev/null 2>&1 || {
+    echo "kc-display: kscreen-doctor not found (is this a KDE Plasma session?)" >&2; exit 1; }
+
+# ── read the outputs (name, connected, enabled) ──────────────────────────────
+# kscreen-doctor -o prints (ANSI-colored):
+#     Output: <index> <name> <uuid>
+#     \tenabled | \tdisabled
+#     \tconnected | \tdisconnected
+read_outputs() {
+    NAMES=(); CONN=(); ENABLED=()
+    local cur=-1 line raw n
+    while IFS= read -r raw; do
+        line="${raw//$'\t'/}"
+        case "$line" in
+            Output:*)
+                cur=$((cur + 1))
+                read -r _ _ n _ <<<"$line"      # "Output: <idx> <name> <uuid>"
+                NAMES+=("$n"); CONN+=(0); ENABLED+=(0)
+                ;;
+            connected)    [ "$cur" -ge 0 ] && CONN[$cur]=1 ;;
+            disconnected) [ "$cur" -ge 0 ] && CONN[$cur]=0 ;;
+            enabled)      [ "$cur" -ge 0 ] && ENABLED[$cur]=1 ;;
+            disabled)     [ "$cur" -ge 0 ] && ENABLED[$cur]=0 ;;
+        esac
+    done < <(kscreen-doctor -o | sed 's/\x1b\[[0-9;]*m//g')
+}
+print_enabled() {
+    local i
+    printf 'display → %s:' "$MODE"
+    for i in "${!NAMES[@]}"; do
+        [ "${ENABLED[$i]}" -eq 1 ] && printf ' %s' "${NAMES[$i]}"
+    done
+    printf '\n'
+}
+
+read_outputs
+[ "${#NAMES[@]}" -gt 0 ] || { echo "kc-display: no outputs found" >&2; exit 1; }
+
+is_laptop()   { case "$1" in eDP*|eDp*|edp*) return 0 ;; *) return 1 ;; esac; }
+
+if [ "$MODE" = "status" ]; then
+    for i in "${!NAMES[@]}"; do
+        st="off"; [ "${ENABLED[$i]}" -eq 1 ] && st="ON "
+        printf '%-10s %-4s %s\n' "${NAMES[$i]}" "$st" \
+            "$([ "${CONN[$i]}" -eq 1 ] && echo connected || echo disconnected)"
+    done
+    exit 0
+fi
+
+# ── pick the target output ────────────────────────────────────────────────────
+TARGET=""
+case "$MODE" in
+    main)
+        for i in "${!NAMES[@]}"; do
+            if [ "${CONN[$i]}" -eq 1 ] && is_laptop "${NAMES[$i]}"; then
+                TARGET="${NAMES[$i]}"; break
+            fi
+        done
+        [ -n "$TARGET" ] || { echo "kc-display: no laptop panel (eDP*) found" >&2; exit 1; }
+        ;;
+    external|hdmi)
+        # prefer HDMI*, fall back to DP*/DisplayPort*
+        for pass in HDMI DP; do
+            for i in "${!NAMES[@]}"; do
+                if [ "${CONN[$i]}" -eq 1 ] && [[ "${NAMES[$i]}" == "$pass"* ]]; then
+                    TARGET="${NAMES[$i]}"; break 2
+                fi
+            done
+        done
+        [ -n "$TARGET" ] || { echo "kc-display: no external monitor (HDMI*/DP*) connected" >&2; exit 1; }
+        ;;
+esac
+
+# ── build the ops: enable target, disable every other enabled output ─────────
+OPS=()
+for i in "${!NAMES[@]}"; do
+    n="${NAMES[$i]}"
+    if [ "$n" = "$TARGET" ]; then
+        OPS+=("output.$n.enable")
+    elif [ "${ENABLED[$i]}" -eq 1 ]; then
+        OPS+=("output.$n.disable")
+    fi
+done
+
+if [ "${#OPS[@]}" -gt 0 ]; then
+    kscreen-doctor "${OPS[@]}" >/dev/null
+    sleep 1
+    read_outputs          # refresh so the summary reflects the new state
+fi
+print_enabled

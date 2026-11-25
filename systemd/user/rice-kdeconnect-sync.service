@@ -1,0 +1,6 @@
+[Unit]
+Description=arch-kde-rice: install remote commands on paired KDE Connect devices
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/kdeconnect-sync --wait

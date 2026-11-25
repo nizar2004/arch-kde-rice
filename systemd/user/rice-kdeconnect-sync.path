@@ -1,0 +1,8 @@
+[Unit]
+Description=arch-kde-rice: watch ~/.config/kdeconnect for newly paired devices
+
+[Path]
+PathModified=%h/.config/kdeconnect
+
+[Install]
+WantedBy=default.target

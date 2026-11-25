@@ -13,6 +13,8 @@ rog-control-center
 asusctl
 discord
 power-profiles-daemon
+# phone ↔ PC remote commands (phase 6)
+kdeconnect
 # optional: nicer spinners/boxes (the UI falls back to pure ANSI without it)
 gum
 # oh-my-posh is installed from its official installer (or AUR: oh-my-posh-bin)

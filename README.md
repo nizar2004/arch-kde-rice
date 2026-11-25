@@ -54,7 +54,9 @@ Other flags: `--dir <path>` (where to clone, default `~/dotfiles`), `--repo <url
 ├── bin/
 │   ├── lib/tui.sh        # shared Catppuccin TUI (gum-accelerated)
 │   ├── backup            # snapshot this machine → repo → push
-│   └── restore           # rebuild the rice on a fresh install
+│   ├── restore           # rebuild the rice on a fresh install
+│   ├── kdeconnect-sync   # push the rice's remote commands to paired phones
+│   └── kc-display        # switch laptop panel ↔ external monitor (KDE Wayland)
 ├── config/
 │   ├── fish/             # → ~/.config/fish
 │   ├── oh-my-posh/       # → ~/.config/oh-my-posh
@@ -66,13 +68,14 @@ Other flags: `--dir <path>` (where to clone, default `~/dotfiles`), `--repo <url
 │   │   ├── plasmoids/    # com.cyberbessa.verticalclock, com.nizar.dashboard
 │   │   └── plasma_icons/ # panel launcher icons
 │   └── desktoptheme/     # SmallTaskIcons (29 px taskbar icons)
+├── systemd/user/         # pairing watcher: auto-add commands to new phones
 ├── wallpapers/           # → ~/Pictures/Wallpaper
 └── fonts/                # user fonts (if any) → ~/.local/share/fonts
 ```
 
-## 🚀 The two global commands
+## 🚀 The three global commands
 
-Both install to `/usr/local/bin` (as symlinks into this repo) and can be run from anywhere.
+All install to `/usr/local/bin` (as symlinks into this repo) and can be run from anywhere.
 
 ### `backup`
 Snapshots the live system into the repo and pushes:
@@ -98,17 +101,51 @@ $ restore
 ┳━ Phase 3 · wallpapers                        # → ~/Pictures/Wallpaper/ + org.kde.slideshow
 ┳━ Phase 4 · Plasma UI, panels & taskbar icons  # widgets, layout, icon size 29
 ┳━ Phase 5 · power & lock screen             # no sleep, screen off 1 h, lid → screen off, no password
-┳━ Phase 6 · global commands
+┳━ Phase 6 · KDE Connect                     # remote commands on every paired phone
+┳━ Phase 7 · global commands                 # backup / restore / kdeconnect-sync
 ```
 
 Use `restore --dry-run` to preview every action without changing anything.
+
+### `kdeconnect-sync`
+Installs the rice's remote commands on every **paired** KDE Connect device:
+
+| Phone button | Runs |
+| --- | --- |
+| **Shut down PC** | `systemctl poweroff` |
+| **Display: main screen only** | `kc-display main` — laptop panel (eDP*) only |
+| **Display: HDMI screen only** | `kc-display external` — HDMI*/DP* monitor only |
+
+It runs automatically on `restore`, and a systemd user **path unit**
+(`rice-kdeconnect-sync.path`) watches `~/.config/kdeconnect` — pair a new
+phone and the commands appear with no action needed. Devices that already
+have their own commands are never touched.
+
+> The KDE Connect command list is a Qt `QSettings` file: the value must be
+> written in Qt's `@ByteArray(…)` encoding or it silently reads back empty —
+> this script handles that for you.
+
+## 🖥️ kc-display
+
+```console
+$ kc-display status          # what's on right now
+HDMI-A-1   ON   connected
+eDP-1      off  connected
+$ kc-display main            # laptop panel only
+$ kc-display external        # external monitor only
+```
+
+Outputs are auto-detected at run time (`eDP*` = laptop panel, `HDMI*`/`DP*` =
+external), so the same KDE Connect commands work on any machine this rice is
+restored to.
 
 ## 📦 Manual install
 
 ```bash
 git clone https://github.com/nizar2004/arch-kde-rice.git ~/dotfiles
-sudo ln -sf ~/dotfiles/bin/backup  /usr/local/bin/backup
-sudo ln -sf ~/dotfiles/bin/restore /usr/local/bin/restore
+sudo ln -sf ~/dotfiles/bin/backup          /usr/local/bin/backup
+sudo ln -sf ~/dotfiles/bin/restore         /usr/local/bin/restore
+sudo ln -sf ~/dotfiles/bin/kdeconnect-sync /usr/local/bin/kdeconnect-sync
 restore
 ```
 

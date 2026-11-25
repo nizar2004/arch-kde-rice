@@ -1,0 +1,82 @@
+#!/usr/bin/env bash
+# =============================================================================
+#  kdeconnect-sync — install this rice's remote commands on every paired
+#  KDE Connect device (called automatically when a new device is paired by
+#  the rice-kdeconnect-sync.path user unit, and by `restore` phase 6).
+#
+#  Commands installed on the phone:
+#      Shut down PC                 → systemctl poweroff
+#      Display: main screen only    → kc-display main
+#      Display: HDMI screen only    → kc-display external
+#
+#  The KDE Connect config is a QSettings ini file; the value MUST be written
+#  in Qt's @ByteArray(…) escaping (a plain JSON blob with commas reads back
+#  as empty). This script writes exactly the encoding QSettings itself uses.
+# =============================================================================
+set -euo pipefail
+
+KC_DIR="$HOME/.config/kdeconnect"
+[ -d "$KC_DIR" ] || exit 0                      # kdeconnect never ran yet
+
+WAIT=0
+[ "${1:-}" = "--wait" ] && WAIT=1
+[ "$WAIT" -eq 1 ] && sleep 5                    # give a fresh pairing time to settle
+
+BIN_DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)"
+KC_DISPLAY="$BIN_DIR/kc-display"
+[ -x "$KC_DISPLAY" ] || KC_DISPLAY="$HOME/.local/bin/kc-display"
+
+# ── the command list (compact JSON, same keys the rice always uses) ──────────
+JSON=$(printf '{
+"cmd-shutdown":{"command":"systemctl poweroff","name":"Shut down PC"},
+"cmd-display-main":{"command":"%s main","name":"Display: main screen only"},
+"cmd-display-hdmi":{"command":"%s external","name":"Display: HDMI screen only"}
+}' "$KC_DISPLAY" "$KC_DISPLAY")
+JSON=${JSON//$'\n'/}
+JSON=${JSON//$'\t'/}
+
+# QSettings ini escaping: wrap in quotes + @ByteArray(…), escape inner quotes
+ESC=${JSON//\"/\\\"}
+VALUE="\"@ByteArray($ESC)\""
+
+shopt -s nullglob
+SYNCED=0
+for dev in "$KC_DIR"/*/; do
+    id="$(basename "$dev")"
+    [[ "$id" =~ ^[0-9a-f]{32}$ ]] || continue                 # only device dirs
+    grep -q "^\[$id\]" "$KC_DIR/trusted_devices" 2>/dev/null || continue   # only trusted
+    name="$(grep -A8 "^\[$id\]" "$KC_DIR/trusted_devices" 2>/dev/null \
+            | sed -n 's/^name=//p' | head -1)"
+    name="${name:-$id}"
+    cfg="$dev/kdeconnect_runcommand/config"
+
+    # already has the rice commands → nothing to do
+    if [ -f "$cfg" ] && grep -q "cmd-shutdown" "$cfg" 2>/dev/null; then
+        echo "kdeconnect-sync: $name · commands already installed"
+        continue
+    fi
+
+    # device has its OWN commands (and not just an empty list) → don't clobber
+    if [ -f "$cfg" ] && grep -q "^commands=" "$cfg" 2>/dev/null; then
+        val="$(sed -n 's/^commands=//p' "$cfg" | tail -1 | tr -d '"' || true)"
+        val="${val#@ByteArray(}"; val="${val%)}"; val="${val// /}"
+        if [ -n "$val" ] && [ "$val" != "{}" ]; then
+            echo "kdeconnect-sync: $name · has its own commands, left untouched"
+            continue
+        fi
+    fi
+
+    mkdir -p "$(dirname "$cfg")"
+    printf '[General]\ncommands=%s\n' "$VALUE" > "$cfg"
+
+    # tell the running daemon to reload + push the list (same signal the GUI emits)
+    dbus-send --session --type=signal \
+        "/kdeconnect/$id/kdeconnect_runcommand" \
+        org.kde.kdeconnect.config.configChanged >/dev/null 2>&1 || true
+
+    echo "kdeconnect-sync: $name · installed 3 remote commands (shutdown + 2 display switches)"
+    SYNCED=$((SYNCED + 1))
+done
+
+[ "$SYNCED" -eq 0 ] || echo "kdeconnect-sync: $SYNCED device(s) updated"
+exit 0
