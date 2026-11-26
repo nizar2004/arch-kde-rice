@@ -66,24 +66,35 @@ stop_pid() {  # stop_pid <pid> [save] — save the buffered clip (replay only), 
     kill -KILL "$pid" 2>/dev/null || true         # escalate (portal-wait ignores INT)
 }
 
-start_replay() {  # start a capture on the given monitor with remembered args
+start_replay() {  # start a portal capture bound to the given monitor
     local mon="$1"
-    local args=() out=() skip=0 a
+    local args=() out=() drop=0 a
     if [ -f "$ARGS_FILE" ]; then
         mapfile -t args < "$ARGS_FILE"
     else
         mapfile -t args < <(printf '%s\n' \
-            -w MON -c mp4 -ac opus -cursor yes -cr limited -pixfmt yuv420 \
+            -c mov -ac opus -cursor yes -cr limited -pixfmt yuv420 \
             -fm vfr -k auto -encoder gpu -f 60 -r 60 -v no \
             -fallback-cpu-encoding yes -o "$HOME/Videos" -replay-storage ram \
-            -q high -a device:default_output -restore-portal-session yes \
-            -ro "$HOME/Videos")
+            -q high -a device:default_output -ro "$HOME/Videos")
     fi
+    # drop capture-source keys we replace below
     for a in "${args[@]}"; do
-        if [ "$skip" = 1 ]; then out+=("$mon"); skip=0; continue; fi
-        if [ "$a" = "-w" ]; then out+=("-w" "$mon"); skip=1; continue; fi
+        if [ "$drop" = 1 ]; then drop=0; continue; fi
+        case "$a" in
+            -w|-restore-portal-session|-portal-session-token-filepath) drop=1; continue ;;
+        esac
         out+=("$a")
     done
+    # Portal capture with a PER-MONITOR session token: the KMS backend only
+    # enumerates one GPU's connectors on hybrid laptops (black/no-output on
+    # the other display), while the portal is GPU-agnostic. The first start
+    # on each display shows the picker once; afterwards the session restores
+    # silently for that exact display.
+    local token="$HOME/.cache/rice/gsr-token-$mon"
+    mkdir -p "$(dirname "$token")"
+    out=("-w" "portal" "-restore-portal-session" "yes" \
+         "-portal-session-token-filepath" "$token" "${out[@]}")
     mkdir -p "$HOME/.cache/rice"
     setsid flatpak run --command=gpu-screen-recorder \
         com.dec05eba.gpu_screen_recorder "${out[@]}" \
@@ -94,13 +105,23 @@ start_replay() {  # start a capture on the given monitor with remembered args
         children | grep -q . && break
         sleep 0.5
     done
-    log "replay (re)started on $mon"
+    log "replay (re)started on $mon (portal, token: $token)"
 }
 
 # ── main loop ─────────────────────────────────────────────────────────────────
+# Never call kscreen-doctor before the graphical session is reachable: it is a
+# Qt GUI app and aborts (coredump spam) without a display platform.
+display_ready() {
+    [ -n "${WAYLAND_DISPLAY:-}" ] && [ -S "${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/$WAYLAND_DISPLAY" ]
+}
+
 log "watching displays (poll ${POLL}s)"
 last=""
 while true; do
+    if ! display_ready; then
+        sleep 5
+        continue
+    fi
     active="$(get_active)"
     if [ -n "$active" ] && [ "$active" != "$last" ]; then
         log "active display: $active"

@@ -1,5 +1,7 @@
 [Unit]
 Description=arch-kde-rice: keep GPU Screen Recorder replay on the active display
+PartOf=graphical-session.target
+After=graphical-session.target
 
 [Service]
 Type=simple
@@ -9,4 +11,4 @@ Restart=on-failure
 RestartSec=3
 
 [Install]
-WantedBy=default.target
+WantedBy=graphical-session.target
