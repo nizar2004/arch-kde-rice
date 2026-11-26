@@ -480,13 +480,37 @@ else
     run ln -sf "$DOTFILES/bin/kc-display" "$HOME/.local/bin/kc-display"
     ok "kc-display installed (main / external / status)"
 
-    step "pairing watcher → ~/.config/systemd/user"
-    for u in rice-kdeconnect-sync.service rice-kdeconnect-sync.path; do
+    step "pairing + replay watchers → ~/.config/systemd/user"
+    for u in rice-kdeconnect-sync.service rice-kdeconnect-sync.path rice-gsr-replay-watch.service; do
         cp -a "$DOTFILES/systemd/user/$u" "$HOME/.config/systemd/user/$u"
     done
     systemctl --user daemon-reload
     systemctl --user enable --now rice-kdeconnect-sync.path 2>/dev/null || true
-    ok "watching ~/.config/kdeconnect — new pairings get the commands automatically"
+    systemctl --user enable --now rice-gsr-replay-watch.service 2>/dev/null || true
+    ok "kdeconnect pairing watcher + GSR replay display watcher installed"
+
+    step "instant replay save shortcut (Meta+R) → KDE shortcuts"
+    if [ "$DRY" -eq 0 ]; then
+        mkdir -p "$HOME/.local/share/applications"
+        # render the desktop on the NVIDIA GPU so the replay captures BOTH
+        # displays (the laptop panel is AMD-wired — GSR can't bridge AMD
+        # buffers with NVENC). Takes effect on the next login.
+        mkdir -p "$HOME/.config/environment.d"
+        cp -a "$DOTFILES/environment.d/99-nvidia-primary.conf" "$HOME/.config/environment.d/" 2>/dev/null || \
+            warn "no environment.d/99-nvidia-primary.conf in the repo"
+        for d in rice-gsr-save.desktop rice-gsr-stop.desktop rice-gsr-start.desktop; do
+            cp -a "$DOTFILES/applications/$d" "$HOME/.local/share/applications/$d"
+        done
+        add_kde_shortcut() { # <desktop-name> <keys> <label>
+            grep -q "\[services\]\[$1\]" "$HOME/.config/kglobalshortcutsrc" 2>/dev/null && return 0
+            printf '[services][%s]\n_launch=%s,none,%s\n\n' "$1" "$2" "$3" >> "$HOME/.config/kglobalshortcutsrc"
+        }
+        add_kde_shortcut rice-gsr-save.desktop  "Meta+R"  "Save instant replay"
+        add_kde_shortcut rice-gsr-stop.desktop  "Meta+F8" "Stop instant replay"
+        add_kde_shortcut rice-gsr-start.desktop "Meta+F10" "Start instant replay"
+        qdbus6 org.kde.kglobalaccel /kglobalaccel reconfigure 2>/dev/null || true
+    fi
+    ok "replay shortcuts: Meta+R save · Meta+F8 stop · Meta+F10 start"
 
     step "installing the commands on every paired device"
     "$DOTFILES/bin/kdeconnect-sync" || warn "kdeconnect-sync had a hiccup — run it again later"
@@ -497,8 +521,8 @@ fi
 
 # ── install the global commands ───────────────────────────────────────────────
 phase 7 7 "global commands"
-CMDS=(backup restore)
-[ "$RICE_KDECONNECT" = 1 ] && CMDS+=(kdeconnect-sync)
+CMDS=(backup restore kdeconnect-sync gsr-replay-watch gsr-replay-ctl)
+[ "$RICE_KDECONNECT" = 1 ] || CMDS=(backup restore gsr-replay-watch gsr-replay-ctl)
 for c in "${CMDS[@]}"; do
     spin_run "/usr/local/bin/$c → $DOTFILES/bin/$c" -- sudo ln -sf "$DOTFILES/bin/$c" "/usr/local/bin/$c"
 done

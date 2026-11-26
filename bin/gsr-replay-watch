@@ -1,0 +1,143 @@
+#!/usr/bin/env bash
+# =============================================================================
+#  gsr-replay-watch — keep GPU Screen Recorder's instant replay on the ACTIVE
+#  display.
+#
+#  Why: on this hybrid-GPU laptop the replay binds to ONE monitor when it
+#  starts. Switching displays (HDMI ↔ laptop panel) leaves it recording a
+#  dead output → black clips. This watcher detects the switch, saves the
+#  buffered clip (SIGUSR1) and restarts the capture on the new display with
+#  the exact same settings.
+#
+#  Save on demand:      Meta+R   (gsr-replay-ctl save  → SIGUSR1)
+#  Stop:                Meta+F8  (gsr-replay-ctl stop  → SIGINT + disable)
+#  Start again:         Meta+F10 (gsr-replay-ctl start → re-enable)
+#
+#  Runs as a systemd user service (rice-gsr-replay-watch.service).
+# =============================================================================
+set -u
+
+POLL="${GSR_REPLAY_POLL:-2}"
+ENABLED_FILE="$HOME/.config/rice/gsr-replay-disabled"
+ARGS_FILE="$HOME/.cache/rice/gsr-replay-args"
+
+log() { printf '%s gsr-replay-watch: %s\n' "$(date '+%b %d %H:%M:%S')" "$*"; }
+
+# ── active display (first 'enabled' output from kscreen-doctor) ──────────────
+get_active() {
+    local line last=""
+    while IFS= read -r raw; do
+        line="${raw//$'\t'/}"
+        case "$line" in
+            Output:*)  read -r _ _ last _ <<<"$line" ;;
+            enabled)   [ -n "$last" ] && { printf '%s' "$last"; return 0; } ;;
+            disabled)  last="" ;;
+        esac
+    done < <(kscreen-doctor -o 2>/dev/null | sed 's/\x1b\[[0-9;]*m//g')
+}
+
+children() { pgrep -f '^gpu-screen-recorder -w ' || true; }
+
+child_w() {  # print the -w value of a recorder process
+    tr '\0' '\n' < "/proc/$1/cmdline" 2>/dev/null | grep -A1 -x -- '-w' | tail -n1
+}
+
+is_replay() {  # replay processes carry -r <seconds>
+    tr '\0' '\n' < "/proc/$1/cmdline" 2>/dev/null | grep -qx -- '-r'
+}
+
+snapshot() {  # remember the newest capture's args (skip argv[0]) so restarts keep the settings
+    local pid="$1"
+    mkdir -p "$(dirname "$ARGS_FILE")"
+    tr '\0' '\n' < "/proc/$pid/cmdline" 2>/dev/null | tail -n +2 > "$ARGS_FILE.tmp" \
+        && mv "$ARGS_FILE.tmp" "$ARGS_FILE"
+}
+
+stop_pid() {  # stop_pid <pid> [save] — save the buffered clip (replay only), then stop
+    local pid="$1" save="${2:-0}" i
+    if [ "$save" = 1 ] && is_replay "$pid"; then
+        kill -USR1 "$pid" 2>/dev/null && sleep 2   # SIGUSR1 = save replay
+    fi
+    kill -INT "$pid" 2>/dev/null
+    for i in $(seq 1 20); do
+        kill -0 "$pid" 2>/dev/null || break
+        sleep 0.3
+    done
+    kill -KILL "$pid" 2>/dev/null || true         # escalate (portal-wait ignores INT)
+}
+
+start_replay() {  # start a capture on the given monitor with remembered args
+    local mon="$1"
+    local args=() out=() skip=0 a
+    if [ -f "$ARGS_FILE" ]; then
+        mapfile -t args < "$ARGS_FILE"
+    else
+        mapfile -t args < <(printf '%s\n' \
+            -w MON -c mp4 -ac opus -cursor yes -cr limited -pixfmt yuv420 \
+            -fm vfr -k auto -encoder gpu -f 60 -r 60 -v no \
+            -fallback-cpu-encoding yes -o "$HOME/Videos" -replay-storage ram \
+            -q high -a device:default_output -restore-portal-session yes \
+            -ro "$HOME/Videos")
+    fi
+    for a in "${args[@]}"; do
+        if [ "$skip" = 1 ]; then out+=("$mon"); skip=0; continue; fi
+        if [ "$a" = "-w" ]; then out+=("-w" "$mon"); skip=1; continue; fi
+        out+=("$a")
+    done
+    mkdir -p "$HOME/.cache/rice"
+    setsid flatpak run --command=gpu-screen-recorder \
+        com.dec05eba.gpu_screen_recorder "${out[@]}" \
+        >>"$HOME/.cache/rice/gsr-replay.log" 2>&1 &
+    # wait for the capture process to register so the next poll doesn't double-spawn
+    local i
+    for i in $(seq 1 16); do
+        children | grep -q . && break
+        sleep 0.5
+    done
+    log "replay (re)started on $mon"
+}
+
+# ── main loop ─────────────────────────────────────────────────────────────────
+log "watching displays (poll ${POLL}s)"
+last=""
+while true; do
+    active="$(get_active)"
+    if [ -n "$active" ] && [ "$active" != "$last" ]; then
+        log "active display: $active"
+        stale=(); fresh=0
+        for pid in $(children); do
+            w="$(child_w "$pid")"
+            if [ "$w" = "$active" ]; then
+                fresh=$((fresh + 1))
+                snapshot "$pid"
+            else
+                stale+=("$pid")
+            fi
+        done
+
+        # multiple captures on the same display → keep the newest only
+        if [ "$fresh" -gt 1 ]; then
+            keep="$(children | tail -n1)"
+            for pid in $(children); do
+                [ "$pid" != "$keep" ] && { log "dedupe: stopping duplicate $pid"; stop_pid "$pid"; }
+            done
+        fi
+
+        if [ "${#stale[@]}" -gt 0 ]; then
+            snapshot "${stale[-1]}"
+            if [ ! -f "$ENABLED_FILE" ]; then
+                log "display switched — migrating replay → $active"
+                for pid in "${stale[@]}"; do stop_pid "$pid" 1; done
+                start_replay "$active"
+            else
+                log "replay disabled — stopping stale capture(s), not restarting"
+                for pid in "${stale[@]}"; do stop_pid "$pid" 0; done
+            fi
+        elif [ "$fresh" -eq 0 ] && [ ! -f "$ENABLED_FILE" ]; then
+            # nothing running and replay is enabled (e.g. right after install)
+            start_replay "$active"
+        fi
+        last="$active"
+    fi
+    sleep "$POLL"
+done

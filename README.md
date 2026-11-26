@@ -69,6 +69,8 @@ Other flags: `--dir <path>` (where to clone, default `~/dotfiles`), `--repo <url
 │   │   └── plasma_icons/ # panel launcher icons
 │   └── desktoptheme/     # SmallTaskIcons (29 px taskbar icons)
 ├── systemd/user/         # pairing watcher: auto-add commands to new phones
+├── applications/         # KDE shortcut entries (replay save/stop/start)
+├── environment.d/        # render desktop on the NVIDIA GPU (replay capture fix)
 ├── wallpapers/           # → ~/Pictures/Wallpaper
 └── fonts/                # user fonts (if any) → ~/.local/share/fonts
 ```
@@ -124,6 +126,22 @@ have their own commands are never touched.
 Both `install.sh` and `restore` ask **"Install KDE Connect + phone remote
 commands? [Y/n]"** — answer `n` and the package, the phase and the watcher
 are all skipped. Changed your mind later? Run `RICE_KDECONNECT=1 restore`.
+
+## 🎬 Instant replay on every display
+
+`restore` phase 6 also wires GPU Screen Recorder's instant replay to follow
+your active display (fixes black clips after switching between the laptop
+panel and an external monitor on hybrid-GPU laptops):
+
+- `rice-gsr-replay-watch.service` — a watcher that saves the buffer and
+  re-binds the replay to whichever display is active (checks every 2 s)
+- `environment.d/99-nvidia-primary.conf` — renders the desktop on the
+  NVIDIA GPU (the panel is AMD-wired; GSR can't bridge AMD buffers with
+  NVENC). Takes effect on the next login. Revert: delete the file,
+  log out/in.
+- Shortcuts: **Meta+R** save clip · **Meta+F8** stop · **Meta+F10** start
+
+## 🖥️ kc-display
 
 > The KDE Connect command list is a Qt `QSettings` file: the value must be
 > written in Qt's `@ByteArray(…)` encoding or it silently reads back empty —

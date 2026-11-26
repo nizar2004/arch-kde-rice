@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+# =============================================================================
+#  gsr-replay-ctl — control the rice's GPU Screen Recorder instant replay.
+#  Bound to KDE shortcuts by the rice:
+#      Meta+R    → gsr-replay-ctl save    (save the buffered clip)
+#      Meta+F8   → gsr-replay-ctl stop    (stop + disable auto-restart)
+#      Meta+F10  → gsr-replay-ctl start   (re-enable; watcher starts it)
+#  The recorder itself is managed by gsr-replay-watch.
+# =============================================================================
+set -u
+
+ENABLED_FILE="$HOME/.config/rice/gsr-replay-disabled"
+MATCH='^gpu-screen-recorder .*-r '
+
+notify() { command -v notify-send >/dev/null 2>&1 && notify-send -a "arch-kde-rice" "$@" >/dev/null 2>&1 || true; }
+
+case "${1:-}" in
+    save)
+        if pkill -USR1 -f "$MATCH"; then
+            notify "Instant replay" "Clip saved ✔"
+        else
+            notify "Instant replay" "Nothing to save (replay not running)"
+        fi
+        ;;
+    stop)
+        mkdir -p "$(dirname "$ENABLED_FILE")"
+        touch "$ENABLED_FILE"
+        pkill -INT -f "$MATCH" 2>/dev/null || true
+        notify "Instant replay" "Stopped"
+        ;;
+    start)
+        rm -f "$ENABLED_FILE"
+        notify "Instant replay" "Enabled — starting on the active screen"
+        ;;
+    status)
+        if pgrep -f "$MATCH" >/dev/null 2>&1; then
+            echo "replay: running"
+        elif [ -f "$ENABLED_FILE" ]; then
+            echo "replay: stopped (disabled)"
+        else
+            echo "replay: enabled, starting…"
+        fi
+        ;;
+    *)
+        echo "usage: gsr-replay-ctl <save|stop|start|status>" >&2
+        exit 2
+        ;;
+esac

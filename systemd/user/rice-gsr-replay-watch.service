@@ -1,0 +1,12 @@
+[Unit]
+Description=arch-kde-rice: keep GPU Screen Recorder replay on the active display
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/gsr-replay-watch
+KillMode=process
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=default.target

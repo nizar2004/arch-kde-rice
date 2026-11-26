@@ -1,0 +1,6 @@
+[Desktop Entry]
+Type=Application
+Name=Stop instant replay
+Exec=/usr/local/bin/gsr-replay-ctl stop
+NoDisplay=true
+X-KDE-StartupNotify=false

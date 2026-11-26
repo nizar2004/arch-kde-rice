@@ -129,7 +129,7 @@ if [ "$RUN_RESTORE" -eq 1 ]; then
 fi
 export RICE_KDECONNECT="$RUN_KDECONNECT"
 
-CMDS=(backup restore)
+CMDS=(backup restore gsr-replay-watch gsr-replay-ctl)
 [ "$RUN_KDECONNECT" = 1 ] && CMDS+=(kdeconnect-sync)
 for c in "${CMDS[@]}"; do
     spin_run "/usr/local/bin/$c → $DEST/bin/$c" -- sudo ln -sf "$DEST/bin/$c" "/usr/local/bin/$c"
