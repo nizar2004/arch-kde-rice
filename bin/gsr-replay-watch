@@ -20,8 +20,10 @@ set -u
 POLL="${GSR_REPLAY_POLL:-2}"
 ENABLED_FILE="$HOME/.config/rice/gsr-replay-disabled"
 ARGS_FILE="$HOME/.cache/rice/gsr-replay-args"
+TOKEN_DIR="$HOME/.local/state/rice"   # persistent — cache cleaners must not wipe these
 
 log() { printf '%s gsr-replay-watch: %s\n' "$(date '+%b %d %H:%M:%S')" "$*"; }
+notify() { command -v notify-send >/dev/null 2>&1 && notify-send -a "arch-kde-rice" "$@" >/dev/null 2>&1 || true; }
 
 # ── active display (first 'enabled' output from kscreen-doctor) ──────────────
 get_active() {
@@ -91,8 +93,8 @@ start_replay() {  # start a portal capture bound to the given monitor
     # the other display), while the portal is GPU-agnostic. The first start
     # on each display shows the picker once; afterwards the session restores
     # silently for that exact display.
-    local token="$HOME/.cache/rice/gsr-token-$mon"
-    mkdir -p "$(dirname "$token")"
+    local token="$TOKEN_DIR/gsr-token-$mon"
+    mkdir -p "$TOKEN_DIR"
     out=("-w" "portal" "-restore-portal-session" "yes" \
          "-portal-session-token-filepath" "$token" "${out[@]}")
     mkdir -p "$HOME/.cache/rice"
@@ -136,9 +138,14 @@ while true; do
             fi
         done
 
-        # multiple captures on the same display → keep the newest only
+        # multiple captures on the same display → keep the rice-managed one
+        # (identified by its per-display session token), newest otherwise
         if [ "$fresh" -gt 1 ]; then
-            keep="$(children | tail -n1)"
+            keep=""
+            for pid in $(children); do
+                tr '\0' '\n' < "/proc/$pid/cmdline" 2>/dev/null | grep -q "rice/gsr-token" && keep="$pid"
+            done
+            [ -n "$keep" ] || keep="$(children | tail -n1)"
             for pid in $(children); do
                 [ "$pid" != "$keep" ] && { log "dedupe: stopping duplicate $pid"; stop_pid "$pid"; }
             done
@@ -150,6 +157,7 @@ while true; do
                 log "display switched — migrating replay → $active"
                 for pid in "${stale[@]}"; do stop_pid "$pid" 1; done
                 start_replay "$active"
+                notify "Instant replay" "Moved to $active"
             else
                 log "replay disabled — stopping stale capture(s), not restarting"
                 for pid in "${stale[@]}"; do stop_pid "$pid" 0; done
@@ -157,6 +165,7 @@ while true; do
         elif [ "$fresh" -eq 0 ] && [ ! -f "$ENABLED_FILE" ]; then
             # nothing running and replay is enabled (e.g. right after install)
             start_replay "$active"
+            notify "Instant replay" "Running on $active"
         fi
         last="$active"
     fi
