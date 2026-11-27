@@ -1,0 +1,12 @@
+[Unit]
+Description=arch-kde-rice: direct-network namespace (VPN bypass for Brave Origin)
+After=NetworkManager.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/rice-netns-setup
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

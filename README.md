@@ -75,7 +75,7 @@ Other flags: `--dir <path>` (where to clone, default `~/dotfiles`), `--repo <url
 └── fonts/                # user fonts (if any) → ~/.local/share/fonts
 ```
 
-## 🚀 The three global commands
+## 🚀 Global commands
 
 All install to `/usr/local/bin` (as symlinks into this repo) and can be run from anywhere.
 
@@ -103,7 +103,7 @@ $ restore
 ┳━ Phase 3 · wallpapers                        # → ~/Pictures/Wallpaper/ + org.kde.slideshow
 ┳━ Phase 4 · Plasma UI, panels & taskbar icons  # widgets, layout, icon size 29
 ┳━ Phase 5 · power & lock screen             # no sleep, screen off 1 h, lid → screen off, no password
-┳━ Phase 6 · KDE Connect                     # remote commands on every paired phone
+┳━ Phase 6 · KDE Connect · replay · Brave    # remote commands, replay follows the display, Brave bypasses the VPN
 ┳━ Phase 7 · global commands                 # backup / restore / kdeconnect-sync
 ```
 
@@ -160,6 +160,18 @@ $ kc-display external        # external monitor only
 Outputs are auto-detected at run time (`eDP*` = laptop panel, `HDMI*`/`DP*` =
 external), so the same KDE Connect commands work on any machine this rice is
 restored to.
+
+## 🌐 Brave Origin — direct connection (VPN bypass)
+
+Brave Origin launches inside the `rice-direct` network namespace: a private
+network stack where the ikuuu policy rules don't exist, so the browser uses
+the plain WiFi while every other application keeps the tunnel.
+
+- `rice-netns.service` (system) builds the namespace at boot (veth + NAT)
+- Verify: `sudo ip netns exec rice-direct curl -s http://myip.ipip.net`
+- Revert: `sudo systemctl disable --now rice-netns.service`, remove
+  `/etc/sudoers.d/rice-brave-direct` and
+  `~/.local/share/applications/brave-origin.desktop`
 
 ## 📦 Manual install
 

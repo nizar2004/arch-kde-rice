@@ -100,6 +100,18 @@ spin_run "systemctl restart asusd" \
     -- sudo systemctl restart asusd \
     || warn "could not restart asusd (is asusctl installed?)"
 
+# ── Brave Origin browser (AUR) — phase 6 launches it VPN-direct ───────────────
+if ! pacman -Q brave-origin-bin >/dev/null 2>&1; then
+    step "installing Brave Origin (AUR)"
+    if command -v yay >/dev/null 2>&1; then
+        run yay -S --needed --noconfirm brave-origin-bin || warn "yay failed — install brave-origin-bin manually"
+    elif command -v paru >/dev/null 2>&1; then
+        run paru -S --needed --noconfirm brave-origin-bin || warn "paru failed — install brave-origin-bin manually"
+    else
+        warn "no AUR helper (yay/paru) — install brave-origin-bin manually"
+    fi
+fi
+
 if ! command -v oh-my-posh >/dev/null 2>&1; then
     step "installing oh-my-posh"
     if command -v yay >/dev/null 2>&1; then
@@ -463,8 +475,9 @@ fi
 # A user path unit re-installs them automatically whenever a new device is
 # paired. kc-display auto-detects the outputs at run time (eDP* = laptop
 # panel, HDMI*/DP* = external), so this works unchanged on any machine.
-phase 6 7 "KDE Connect · remote commands"
+phase 6 7 "KDE Connect · replay watcher · Brave direct"
 
+# ── 6a: KDE Connect (opt-in) ──────────────────────────────────────────────────
 if [ "$RICE_KDECONNECT" != 1 ]; then
     info "skipped — KDE Connect was declined (run: RICE_KDECONNECT=1 restore to add it later)"
 elif [ "$DRY" -eq 1 ]; then
@@ -516,6 +529,36 @@ else
     "$DOTFILES/bin/kdeconnect-sync" || warn "kdeconnect-sync had a hiccup — run it again later"
     if ! pgrep -x kdeconnectd >/dev/null 2>&1; then
         info "kdeconnectd is not running yet — commands will be pushed on first pairing"
+    fi
+fi
+
+# ── 6b: Brave Origin → direct-network namespace (VPN bypass) ─────────────────
+# Brave Origin runs inside the 'rice-direct' namespace: a private network
+# stack where the ikuuu VPN policy rules don't exist, so the browser uses the
+# plain WiFi while every other application keeps the tunnel.
+if [ "$DRY" -eq 1 ]; then
+    dry "rice-netns.service (system): rice-direct namespace via veth + NAT"
+    dry "Brave Origin desktop override → rice-brave-direct (VPN bypassed)"
+elif ! pacman -Q brave-origin-bin >/dev/null 2>&1; then
+    info "brave-origin-bin not installed — VPN bypass skipped"
+else
+    sudo ln -sf "$DOTFILES/bin/rice-netns-setup" /usr/local/bin/rice-netns-setup
+    sudo ln -sf "$DOTFILES/bin/rice-netns-exec" /usr/local/bin/rice-netns-exec
+    sudo ln -sf "$DOTFILES/bin/rice-brave-direct" /usr/local/bin/rice-brave-direct
+    sudo cp -a "$DOTFILES/systemd/system/rice-netns.service" /etc/systemd/system/
+    sudo systemctl daemon-reload
+    sudo systemctl enable --now rice-netns.service 2>/dev/null || true
+    printf '%s ALL=(root) NOPASSWD: /usr/local/bin/rice-netns-exec\n' "$USER" \
+        | sudo tee /etc/sudoers.d/rice-brave-direct >/dev/null
+    sudo chmod 440 /etc/sudoers.d/rice-brave-direct
+    sudo visudo -cf /etc/sudoers.d/rice-brave-direct >/dev/null \
+        && ok "sudoers: rice-netns-exec (NOPASSWD) installed"
+    if [ -f /usr/share/applications/brave-origin.desktop ]; then
+        mkdir -p "$HOME/.local/share/applications"
+        sed 's|^Exec=.*|Exec=/usr/local/bin/rice-brave-direct %U|' \
+            /usr/share/applications/brave-origin.desktop \
+            > "$HOME/.local/share/applications/brave-origin.desktop"
+        ok "Brave Origin → plain WiFi (VPN bypassed); other apps keep the tunnel"
     fi
 fi
 

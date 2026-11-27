@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# =============================================================================
+#  rice-brave-direct — launch Brave Origin through the rice-direct namespace
+#  (plain WiFi, ikuuu VPN bypassed). Used by the Brave Origin desktop entry;
+#  safe to run from a terminal as well.
+# =============================================================================
+set -eu
+
+if [ ! -e /run/netns/rice-direct ]; then
+    command -v notify-send >/dev/null 2>&1 && \
+        notify-send -a "Brave Origin" "Direct network not ready yet" || true
+    echo "rice-direct namespace not ready — run: sudo systemctl start rice-netns" >&2
+    exit 1
+fi
+
+exec sudo -n /usr/local/bin/rice-netns-exec "${WAYLAND_DISPLAY:-wayland-0}" "$@"

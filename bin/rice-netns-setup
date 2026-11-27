@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+# =============================================================================
+#  rice-netns-setup — create the 'rice-direct' network namespace.
+#
+#  Inside this namespace the ikuuu VPN policy rules (which live in the main
+#  namespace) do not exist, so anything launched here — Brave Origin — uses
+#  the plain WiFi connection directly. Traffic leaves via a veth pair + NAT
+#  on the default-route interface. Idempotent; runs at boot from
+#  rice-netns.service and can be re-run at any time.
+# =============================================================================
+set -eu
+
+NS="rice-direct"
+HOST_VETH="veth-rice-h"
+NS_VETH="veth-rice-d"
+SUBNET="192.168.77.0/30"
+HOST_IP="192.168.77.1"
+NS_IP="192.168.77.2"
+
+# WAN interface = the one owning the default route (adapts to any WiFi)
+WAN="$(ip route show default | awk '{print $5; exit}')"
+[ -n "$WAN" ] || { echo "rice-netns-setup: no default route yet" >&2; exit 1; }
+
+# forwarding for the namespace traffic
+sysctl -w net.ipv4.ip_forward=1 >/dev/null
+
+# ── namespace ────────────────────────────────────────────────────────────────
+ip netns list | grep -q "^$NS" || ip netns add "$NS"
+ip -n "$NS" link set lo up
+
+# ── veth pair ────────────────────────────────────────────────────────────────
+if ! ip link show "$HOST_VETH" >/dev/null 2>&1; then
+    ip link add "$HOST_VETH" type veth peer name "$NS_VETH"
+    ip link set "$NS_VETH" netns "$NS"
+fi
+ip addr replace "$HOST_IP/30" dev "$HOST_VETH"
+ip -n "$NS" addr replace "$NS_IP/30" dev "$NS_VETH"
+ip link set "$HOST_VETH" up
+ip -n "$NS" link set "$NS_VETH" up
+ip -n "$NS" route replace default via "$HOST_IP" dev "$NS_VETH"
+
+# ── policy: namespace traffic uses the main table directly (bypasses the
+#    ikuuu TUN rules at priority 9000+) ────────────────────────────────────────
+ip rule del from "$SUBNET" lookup main priority 8500 2>/dev/null || true
+ip rule add from "$SUBNET" lookup main priority 8500
+
+# ── NAT out the WAN interface ────────────────────────────────────────────────
+iptables -t nat -C POSTROUTING -s "$SUBNET" -o "$WAN" -j MASQUERADE 2>/dev/null || \
+    iptables -t nat -A POSTROUTING -s "$SUBNET" -o "$WAN" -j MASQUERADE
+
+# ── keep NetworkManager away from the host veth ──────────────────────────────
+command -v nmcli >/dev/null 2>&1 && nmcli device set "$HOST_VETH" managed no 2>/dev/null || true
+
+echo "rice-direct ready: $NS_IP → WAN via $WAN (direct, VPN bypassed)"

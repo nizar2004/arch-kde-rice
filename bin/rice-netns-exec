@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+# =============================================================================
+#  rice-netns-exec — (root, via sudo) exec a command inside the rice-direct
+#  namespace as the desktop user, with the desktop session environment.
+#  Called by rice-brave-direct (sudoers: NOPASSWD for this exact path).
+# =============================================================================
+set -eu
+
+NS="rice-direct"
+USER_NAME="${SUDO_USER:?run me through sudo so SUDO_USER identifies the desktop user}"
+UID_="$(id -u "$USER_NAME")"
+USER_HOME="$(getent passwd "$USER_NAME" | cut -d: -f6)"
+
+WD="${1:-wayland-0}"
+shift
+
+exec ip netns exec "$NS" setpriv \
+    --reuid="$USER_NAME" --regid="$USER_NAME" --init-groups \
+    env XDG_RUNTIME_DIR="/run/user/$UID_" \
+        WAYLAND_DISPLAY="$WD" \
+        DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/$UID_/bus" \
+        HOME="$USER_HOME" USER="$USER_NAME" LOGNAME="$USER_NAME" \
+    /usr/bin/brave-origin "$@"
