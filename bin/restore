@@ -564,8 +564,8 @@ fi
 
 # ── install the global commands ───────────────────────────────────────────────
 phase 7 7 "global commands"
-CMDS=(backup restore kdeconnect-sync gsr-replay-watch gsr-replay-ctl)
-[ "$RICE_KDECONNECT" = 1 ] || CMDS=(backup restore gsr-replay-watch gsr-replay-ctl)
+CMDS=(backup restore kdeconnect-sync gsr-replay-watch gsr-replay-ctl rice-wallpaper-rotate)
+[ "$RICE_KDECONNECT" = 1 ] || CMDS=(backup restore gsr-replay-watch gsr-replay-ctl rice-wallpaper-rotate)
 for c in "${CMDS[@]}"; do
     spin_run "/usr/local/bin/$c → $DOTFILES/bin/$c" -- sudo ln -sf "$DOTFILES/bin/$c" "/usr/local/bin/$c"
 done

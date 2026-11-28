@@ -46,6 +46,23 @@ mapfile -t images < <(printf '%s\n' "$sources" | while IFS= read -r d; do
 done | sort -u)
 [ "${#images[@]}" -gt 0 ] || { echo "rice-wallpaper-rotate: no wallpapers found"; exit 0; }
 
+# dark aesthetic only: skip bright wallpapers (they read as "light mode")
+mapfile -t images < <(python3 - "${images[@]}" <<'PY'
+import sys
+from PIL import Image
+for f in sys.argv[1:]:
+    try:
+        img = Image.open(f).convert('L').resize((80, 50))
+        h = img.histogram()
+        total = sum(h) or 1
+        if sum(i*c for i, c in enumerate(h)) / total <= 120:
+            print(f)
+    except Exception:
+        pass
+PY
+)
+[ "${#images[@]}" -gt 0 ] || { echo "rice-wallpaper-rotate: no DARK wallpapers found"; exit 0; }
+
 # ── 3. pick a random one that differs from the current ───────────────────────
 cur="$(cat "$CUR_FILE" 2>/dev/null || true)"
 pool=()
@@ -105,6 +122,15 @@ PY
 # ── 6. apply the accent (keeps the dark scheme; only the highlight changes) ──
 if [ -n "$accent" ] && [ "$accent" != "$(cat "$ACCENT_FILE" 2>/dev/null)" ]; then
     if plasma-apply-colorscheme "$SCHEME" --accent-color "$accent" >/dev/null 2>&1; then
+        # plasma-apply-colorscheme derives a darker selection for dark schemes;
+        # write the raw accent so the highlight is clearly visible
+        rgb="$(python3 -c "
+import sys
+h = sys.argv[1].lstrip('#')
+print(','.join(str(int(h[i:i+2], 16)) for i in (0, 2, 4)))
+" "$accent")"
+        kwriteconfig6 --file kdeglobals --group "Colors:Selection" --key BackgroundNormal "$rgb"
+        kwriteconfig6 --file kdeglobals --group "Colors:Selection" --key BackgroundAlternate "$rgb"
         printf '%s' "$accent" > "$ACCENT_FILE"
         echo "rice-wallpaper-rotate: accent → $accent"
     else
