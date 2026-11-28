@@ -1,0 +1,80 @@
+#!/usr/bin/env bash
+# =============================================================================
+#  rice-theme-guard — make sure Plasma stays DARK.
+#
+#  If a color scheme is ever applied by hand (or by a buggy script) with a
+#  scheme name that has no .colors file, Plasma wipes every [Colors:*]
+#  background key and falls back to the LIGHT defaults — the "white mode".
+#  This guard detects that and restores the dark scheme immediately.
+#
+#  Run by rice-theme-guard.timer (every 5 min).
+# =============================================================================
+set -u
+
+DARK_SCHEME="BreezeDark"
+SCHEME_FILE="/usr/share/color-schemes/$DARK_SCHEME.colors"
+[ -f "$SCHEME_FILE" ] || exit 0
+
+view_bg="$(kreadconfig6 --file kdeglobals --group "Colors:View" --key BackgroundNormal 2>/dev/null)"
+win_bg="$(kreadconfig6 --file kdeglobals --group "Colors:Window" --key BackgroundNormal 2>/dev/null)"
+scheme="$(kreadconfig6 --file kdeglobals --group General --key ColorScheme 2>/dev/null)"
+
+# ── healthy? (backgrounds present AND dark) ──────────────────────────────────
+healthy=1
+for bg in "$view_bg" "$win_bg"; do
+    [ -n "$bg" ] || { healthy=0; break; }
+    first="${bg%%,*}"
+    [ "$first" -le 80 ] 2>/dev/null || { healthy=0; break; }
+done
+
+if [ "$healthy" -eq 1 ]; then
+    exit 0
+fi
+
+# ── broken → restore the dark scheme ─────────────────────────────────────────
+echo "rice-theme-guard: broken theme detected (scheme='${scheme:-none}'," \
+     "view='${view_bg:-missing}', window='${win_bg:-missing}') — restoring $DARK_SCHEME" >&2
+
+# Point the scheme key at the real file FIRST: while it points at a dangling
+# name, plasma-apply-colorscheme cannot resolve a base scheme and leaves the
+# backgrounds missing.
+kwriteconfig6 --file kdeglobals --group General --key ColorScheme "$DARK_SCHEME"
+
+# Fill in every missing [Colors:*] key straight from the scheme file. This
+# has to happen before the apply below: plasma-apply-colorscheme skips the
+# bulk write when kdeglobals already names the target scheme, so it would
+# leave the backgrounds missing (and the apps would keep the light colours
+# they cached).
+python3 - "$SCHEME_FILE" <<'PY'
+import configparser, sys
+src = configparser.ConfigParser(strict=False, delimiters=('=',))
+src.optionxform = str
+src.read(sys.argv[1])
+path = '/home/nizar/.config/kdeglobals'
+dst = configparser.ConfigParser(strict=False, delimiters=('=',))
+dst.optionxform = str
+dst.read(path)
+for s in src.sections():
+    if not s.startswith('Colors'):
+        continue
+    if not dst.has_section(s):
+        dst.add_section(s)
+    for k, v in src.items(s):
+        if not dst.has_option(s, k) or not dst.get(s, k):
+            dst.set(s, k, v)
+with open(path, 'w') as f:
+    dst.write(f)
+PY
+
+# Keep whatever accent the wallpaper rotator last chose, so the restore does
+# not reset the adaptive highlight. This also notifies the running apps.
+accent="$(cat "$HOME/.cache/rice/current-accent" 2>/dev/null)"
+if [ -n "$accent" ]; then
+    plasma-apply-colorscheme "$DARK_SCHEME" --accent-color "$accent" >/dev/null 2>&1 \
+        || plasma-apply-colorscheme "$DARK_SCHEME" >/dev/null 2>&1
+else
+    plasma-apply-colorscheme "$DARK_SCHEME" >/dev/null 2>&1
+fi
+
+qdbus6 org.kde.KWin /KWin reconfigure >/dev/null 2>&1
+echo "rice-theme-guard: dark theme restored ✓" >&2

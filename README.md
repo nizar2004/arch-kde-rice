@@ -173,18 +173,30 @@ the plain WiFi while every other application keeps the tunnel.
   `/etc/sudoers.d/rice-brave-direct` and
   `~/.local/share/applications/brave-origin.desktop`
 
-## 🎨 Adaptive accent color
+## 🎨 Adaptive accent color (dark theme, always)
 
 `rice-wallpaper-rotate.timer` picks a random wallpaper every 30 minutes and
-retints **only the selection/accent color** to its most vibrant hue — the
-scheme stays dark (`DarkNeutral`): window, view and background colors are
-never touched. The wallpaper is also guaranteed to keep changing (the
-rotator replaces the slideshow plugin so the exact current image — and
-therefore its color — is always known).
+retints **only the selection/accent color** to its most vibrant hue. The
+scheme stays dark (`BreezeDark`) — window, view and background colors are
+never touched. The wallpaper is also guaranteed to keep changing (the rotator
+replaces the slideshow plugin so the exact current image — and therefore its
+color — is always known).
 
 - Run on demand: `rice-wallpaper-rotate`
 - Grayscale wallpapers keep the current accent (nothing to sample)
+- Bright wallpapers are skipped, so the desktop never looks "light"
 - State: `~/.cache/rice/current-wallpaper`, `~/.cache/rice/current-accent`
+
+### 🛡️ Dark theme guard
+
+`rice-theme-guard.timer` checks every 5 minutes that Plasma is still dark.
+If a color scheme is ever applied by hand (or by a buggy script) using a
+scheme name that has no `.colors` file, Plasma loses every background key and
+silently falls back to the **light** defaults — the infamous "white mode".
+The guard detects that and restores the dark scheme (keeping your accent).
+
+- Run on demand: `rice-theme-guard`
+- Disable: `systemctl --user disable --now rice-theme-guard.timer`
 
 ## 📦 Manual install
 

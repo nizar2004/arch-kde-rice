@@ -1,0 +1,7 @@
+[Unit]
+Description=arch-kde-rice: make sure Plasma stays dark
+After=graphical-session.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/rice-theme-guard

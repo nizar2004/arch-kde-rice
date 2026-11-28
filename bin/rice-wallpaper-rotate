@@ -1,11 +1,22 @@
 #!/usr/bin/env bash
 # =============================================================================
 #  rice-wallpaper-rotate — pick a random wallpaper, apply it, and retint the
-#  Plasma accent/selection color to match. Replaces org.kde.slideshow with an
-#  explicit rotator so the exact current wallpaper (and therefore its color)
-#  is always known.
+#  Plasma accent/selection color to match.
 #
 #  Run by rice-wallpaper-rotate.timer (at login + every 30 min).
+#
+#  Four bugs this rewrite fixes (all found by live-testing on Plasma 6.8):
+#
+#   1. SCHEME name must exist as a .colors file. A dangling name (e.g.
+#      "DarkNeutral") makes plasma-apply-colorscheme wipe every [Colors:*]
+#      background key -> Plasma falls back to LIGHT defaults -> "white mode".
+#      We now resolve the real scheme file and verify it exists.
+#   2. The accent is applied via plasma-apply-colorscheme --accent-color,
+#      which is the ONLY path that propagates live to running apps.
+#      Raw kwriteconfig6 writes do NOT reach running apps.
+#   3. The selection highlight is then made clearly visible by rewriting the
+#      [Colors:Selection] keys and notifying KWin + Plasma.
+#   4. Only DARK wallpapers are eligible, so the bright one can never show up.
 # =============================================================================
 set -u
 
@@ -13,25 +24,50 @@ STATE_DIR="$HOME/.cache/rice"
 CUR_FILE="$STATE_DIR/current-wallpaper"
 ACCENT_FILE="$STATE_DIR/current-accent"
 APPLET_SRC="$HOME/.config/plasma-org.kde.plasma.desktop-appletsrc"
-SCHEME="$(kreadconfig6 --file kdeglobals --group General --key ColorScheme 2>/dev/null)"
-SCHEME="${SCHEME:-DarkNeutral}"
+WALLPAPER_DIR="$HOME/Pictures/Wallpaper"
 
-# ── 1. wallpaper sources: the slideshow SlidePaths + ~/Pictures/Wallpaper ────
-sources="$HOME/Pictures/Wallpaper"
+# ── 1. resolve a REAL color scheme (never a dangling name) ───────────────────
+# Find the scheme whose file exists on disk. Prefer the one currently active
+# in kdeglobals, but only if it resolves; otherwise fall back to BreezeDark.
+active="$(kreadconfig6 --file kdeglobals --group General --key ColorScheme 2>/dev/null)"
+scheme=""
+for cand in "$active" BreezeDark BreezeClassic OxygenDark; do
+    [ -n "$cand" ] || continue
+    if [ -f "/usr/share/color-schemes/$cand.colors" ] \
+    || [ -f "$HOME/.local/share/color-schemes/$cand.colors" ]; then
+        scheme="$cand"
+        break
+    fi
+done
+if [ -z "$scheme" ]; then
+    echo "rice-wallpaper-rotate: no usable color scheme file found — aborting" >&2
+    exit 1
+fi
+# Guard: the scheme must be a DARK one (dark window/view background).
+scheme_bg="$(grep -A2 '^\[Colors:Window\]' "/usr/share/color-schemes/$scheme.colors" 2>/dev/null \
+    | grep -m1 'BackgroundNormal' | cut -d= -f2 | tr -d ' ')"
+if [ -n "$scheme_bg" ]; then
+    lum=$(( ${scheme_bg%%,*} ))
+    if [ "$lum" -gt 80 ]; then
+        echo "rice-wallpaper-rotate: '$scheme' is not a dark scheme — aborting" >&2
+        exit 1
+    fi
+fi
+
+# ── 2. wallpaper sources ─────────────────────────────────────────────────────
+sources="$WALLPAPER_DIR"
 if [ -f "$APPLET_SRC" ]; then
     while IFS= read -r p; do
-        p="${p#file://}"
         [ -d "$p" ] && sources="$sources
 $p"
     done < <(python3 - "$APPLET_SRC" <<'PY'
 import configparser, sys
-c = configparser.ConfigParser(strict=False, delimiters=('='))
+c = configparser.ConfigParser(strict=False, delimiters=('=',))
 c.optionxform = str
 c.read(sys.argv[1])
 for s in c.sections():
     if '[Wallpaper][org.kde.slideshow][General]' in s:
-        v = c.get(s, 'SlidePaths', fallback='')
-        for p in v.replace('file://', '').split(','):
+        for p in c.get(s, 'SlidePaths', fallback='').replace('file://', '').split(','):
             p = p.strip()
             if p:
                 print(p)
@@ -39,14 +75,13 @@ PY
 )
 fi
 
-# ── 2. enumerate images ──────────────────────────────────────────────────────
+# ── 3. enumerate images, keeping only DARK ones ──────────────────────────────
 mapfile -t images < <(printf '%s\n' "$sources" | while IFS= read -r d; do
     [ -d "$d" ] && find "$d" -maxdepth 1 -type f \
         \( -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' -o -iname '*.webp' \) 2>/dev/null
 done | sort -u)
 [ "${#images[@]}" -gt 0 ] || { echo "rice-wallpaper-rotate: no wallpapers found"; exit 0; }
 
-# dark aesthetic only: skip bright wallpapers (they read as "light mode")
 mapfile -t images < <(python3 - "${images[@]}" <<'PY'
 import sys
 from PIL import Image
@@ -55,7 +90,7 @@ for f in sys.argv[1:]:
         img = Image.open(f).convert('L').resize((80, 50))
         h = img.histogram()
         total = sum(h) or 1
-        if sum(i*c for i, c in enumerate(h)) / total <= 120:
+        if sum(i * c for i, c in enumerate(h)) / total <= 120:
             print(f)
     except Exception:
         pass
@@ -63,7 +98,7 @@ PY
 )
 [ "${#images[@]}" -gt 0 ] || { echo "rice-wallpaper-rotate: no DARK wallpapers found"; exit 0; }
 
-# ── 3. pick a random one that differs from the current ───────────────────────
+# ── 4. pick a random one that differs from the current ───────────────────────
 cur="$(cat "$CUR_FILE" 2>/dev/null || true)"
 pool=()
 for img in "${images[@]}"; do
@@ -75,7 +110,7 @@ if [ "${#pool[@]}" -eq 0 ]; then
 fi
 pick="${pool[RANDOM % ${#pool[@]}]}"
 
-# ── 4. apply via plasmashell scripting (org.kde.image) ───────────────────────
+# ── 5. apply via plasmashell scripting (org.kde.image) ───────────────────────
 qdbus6 org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript "
 var p = 'file://' + $(printf '%s' "$pick" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))');
 var ds = desktops();
@@ -89,7 +124,7 @@ mkdir -p "$STATE_DIR"
 printf '%s' "$pick" > "$CUR_FILE"
 echo "rice-wallpaper-rotate: wallpaper → $(basename "$pick")"
 
-# ── 5. extract the most vibrant color region → accent color ─────────────────
+# ── 6. extract the most vibrant color region → accent color ─────────────────
 accent="$(python3 - "$pick" <<'PY'
 import sys, colorsys
 from PIL import Image
@@ -119,21 +154,45 @@ print(f'#{r2:02x}{g2:02x}{b2:02x}')
 PY
 )"
 
-# ── 6. apply the accent (keeps the dark scheme; only the highlight changes) ──
+# ── 7. apply the accent (keeps the dark scheme; only the highlight changes) ──
 if [ -n "$accent" ] && [ "$accent" != "$(cat "$ACCENT_FILE" 2>/dev/null)" ]; then
-    if plasma-apply-colorscheme "$SCHEME" --accent-color "$accent" >/dev/null 2>&1; then
-        # plasma-apply-colorscheme derives a darker selection for dark schemes;
-        # write the raw accent so the highlight is clearly visible
-        rgb="$(python3 -c "
+    # plasma-apply-colorscheme is the only path that propagates live to
+    # running apps (KWin, Dolphin, Konsole, ...). A raw kwriteconfig6 write
+    # stays invisible until the app restarts.
+    if ! plasma-apply-colorscheme "$scheme" --accent-color "$accent" >/dev/null 2>&1; then
+        echo "rice-wallpaper-rotate: accent apply failed for $accent" >&2
+        exit 1
+    fi
+
+    # plasma-apply-colorscheme derives a muted selection colour for dark
+    # schemes; rewrite it with the raw accent so the highlight is obvious.
+    rgb="$(python3 -c "
 import sys
 h = sys.argv[1].lstrip('#')
 print(','.join(str(int(h[i:i+2], 16)) for i in (0, 2, 4)))
 " "$accent")"
-        kwriteconfig6 --file kdeglobals --group "Colors:Selection" --key BackgroundNormal "$rgb"
-        kwriteconfig6 --file kdeglobals --group "Colors:Selection" --key BackgroundAlternate "$rgb"
-        printf '%s' "$accent" > "$ACCENT_FILE"
-        echo "rice-wallpaper-rotate: accent → $accent"
-    else
-        echo "rice-wallpaper-rotate: accent apply failed for $accent" >&2
-    fi
+    kwriteconfig6 --file kdeglobals --group "Colors:Selection" --key BackgroundNormal "$rgb"
+    kwriteconfig6 --file kdeglobals --group "Colors:Selection" --key BackgroundAlternate "$rgb"
+
+    # Sanity check: the dark backgrounds must still be present. If they went
+    # missing, Plasma would fall back to a LIGHT theme ("white mode").
+    for grp in View Window; do
+        v="$(kreadconfig6 --file kdeglobals --group "Colors:$grp" --key BackgroundNormal 2>/dev/null)"
+        if [ -z "$v" ]; then
+            echo "rice-wallpaper-rotate: '$scheme' lost its dark background — restoring" >&2
+            plasma-apply-colorscheme "$scheme" >/dev/null 2>&1
+            break
+        fi
+    done
+
+    # Nudge the running apps to re-read the new colours.
+    qdbus6 org.kde.KWin /KWin reconfigure >/dev/null 2>&1
+    qdbus6 org.kde.plasmashell /PlasmaShell \
+        org.kde.PlasmaShell.evaluateScript "
+var ds = desktops();
+for (var i = 0; i < ds.length; i++) { ds[i].wallpaperPlugin = 'org.kde.image'; }
+" >/dev/null 2>&1
+
+    printf '%s' "$accent" > "$ACCENT_FILE"
+    echo "rice-wallpaper-rotate: accent → $accent (scheme: $scheme, dark ✓)"
 fi

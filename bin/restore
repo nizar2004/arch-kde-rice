@@ -532,7 +532,38 @@ else
     fi
 fi
 
-# ── 6b: Brave Origin → direct-network namespace (VPN bypass) ─────────────────
+# ── 6b: adaptive accent + wallpaper rotation (dark theme is never touched) ────
+# rice-wallpaper-rotate picks a random DARK wallpaper every 30 min and retints
+# ONLY the selection/accent colour to match it. rice-theme-guard is the
+# watchdog: if a colour scheme ever gets applied with a dangling name, Plasma
+# loses its dark backgrounds and falls back to a LIGHT theme ("white mode") —
+# the guard detects that and restores the dark scheme within 5 minutes.
+if [ "$DRY" -eq 1 ]; then
+    dry "install rice-wallpaper-rotate.{service,timer} + rice-theme-guard.{service,timer}"
+    dry "systemctl --user enable --now rice-wallpaper-rotate.timer rice-theme-guard.timer"
+else
+    run mkdir -p "$HOME/.config/systemd/user"
+    step "adaptive accent + wallpaper rotation -> ~/.config/systemd/user"
+    for u in rice-wallpaper-rotate.service rice-wallpaper-rotate.timer \
+             rice-theme-guard.service rice-theme-guard.timer; do
+        [ -f "$DOTFILES/systemd/user/$u" ] && cp -a "$DOTFILES/systemd/user/$u" "$HOME/.config/systemd/user/$u"
+    done
+    systemctl --user daemon-reload
+    systemctl --user enable --now rice-wallpaper-rotate.timer 2>/dev/null || true
+    systemctl --user enable --now rice-theme-guard.timer 2>/dev/null || true
+    ok "wallpaper rotates every 30 min - selection colour follows the wallpaper - dark theme guarded"
+
+    # Never leave the session on a light scheme: make sure the active scheme
+    # name points at a real .colors file.
+    cur_scheme="$(kreadconfig6 --file kdeglobals --group General --key ColorScheme 2>/dev/null)"
+    if [ -n "$cur_scheme" ] && [ ! -f "/usr/share/color-schemes/$cur_scheme.colors" ] \
+    && [ ! -f "$HOME/.local/share/color-schemes/$cur_scheme.colors" ]; then
+        warn "colour scheme '$cur_scheme' has no .colors file - switching to BreezeDark"
+        kwriteconfig6 --file kdeglobals --group General --key ColorScheme BreezeDark
+    fi
+fi
+
+# ── 6c: Brave Origin → direct-network namespace (VPN bypass) ─────────────────
 # Brave Origin runs inside the 'rice-direct' namespace: a private network
 # stack where the ikuuu VPN policy rules don't exist, so the browser uses the
 # plain WiFi while every other application keeps the tunnel.
@@ -564,8 +595,8 @@ fi
 
 # ── install the global commands ───────────────────────────────────────────────
 phase 7 7 "global commands"
-CMDS=(backup restore kdeconnect-sync gsr-replay-watch gsr-replay-ctl rice-wallpaper-rotate)
-[ "$RICE_KDECONNECT" = 1 ] || CMDS=(backup restore gsr-replay-watch gsr-replay-ctl rice-wallpaper-rotate)
+CMDS=(backup restore kdeconnect-sync gsr-replay-watch gsr-replay-ctl rice-wallpaper-rotate rice-theme-guard)
+[ "$RICE_KDECONNECT" = 1 ] || CMDS=(backup restore gsr-replay-watch gsr-replay-ctl rice-wallpaper-rotate rice-theme-guard)
 for c in "${CMDS[@]}"; do
     spin_run "/usr/local/bin/$c → $DOTFILES/bin/$c" -- sudo ln -sf "$DOTFILES/bin/$c" "/usr/local/bin/$c"
 done
