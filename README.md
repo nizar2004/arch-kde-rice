@@ -173,6 +173,19 @@ the plain WiFi while every other application keeps the tunnel.
   `/etc/sudoers.d/rice-brave-direct` and
   `~/.local/share/applications/brave-origin.desktop`
 
+## 🎨 Adaptive accent color
+
+`rice-wallpaper-rotate.timer` picks a random wallpaper every 30 minutes and
+retints **only the selection/accent color** to its most vibrant hue — the
+scheme stays dark (`DarkNeutral`): window, view and background colors are
+never touched. The wallpaper is also guaranteed to keep changing (the
+rotator replaces the slideshow plugin so the exact current image — and
+therefore its color — is always known).
+
+- Run on demand: `rice-wallpaper-rotate`
+- Grayscale wallpapers keep the current accent (nothing to sample)
+- State: `~/.cache/rice/current-wallpaper`, `~/.cache/rice/current-accent`
+
 ## 📦 Manual install
 
 ```bash
