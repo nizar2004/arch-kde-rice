@@ -76,7 +76,7 @@ fi
 
 # ── Phase 1: dependencies & shell ─────────────────────────────────────────────
 phase 1 6 "dependencies & default shell"
-PKGS=(fish fastfetch ghostty ttf-meslo-nerd git curl unzip fontconfig rsync)
+PKGS=(fish fastfetch ghostty ttf-meslo-nerd git curl unzip fontconfig rsync python-pillow)
 spin_run "pacman · installing ${#PKGS[@]} packages" -- sudo pacman -S --needed --noconfirm "${PKGS[@]}"
 
 # ── ASUS / ROG & daily apps (all in the official repos) ───────────────────────

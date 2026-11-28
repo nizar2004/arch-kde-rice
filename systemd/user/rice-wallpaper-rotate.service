@@ -1,0 +1,6 @@
+[Unit]
+Description=arch-kde-rice: rotate the wallpaper and retint the accent color
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/rice-wallpaper-rotate

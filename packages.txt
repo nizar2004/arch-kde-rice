@@ -8,6 +8,7 @@ curl
 unzip
 fontconfig
 rsync
+python-pillow
 # ASUS / ROG & daily apps (phase 1, second step)
 rog-control-center
 asusctl

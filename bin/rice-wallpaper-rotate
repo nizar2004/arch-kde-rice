@@ -1,0 +1,113 @@
+#!/usr/bin/env bash
+# =============================================================================
+#  rice-wallpaper-rotate — pick a random wallpaper, apply it, and retint the
+#  Plasma accent/selection color to match. Replaces org.kde.slideshow with an
+#  explicit rotator so the exact current wallpaper (and therefore its color)
+#  is always known.
+#
+#  Run by rice-wallpaper-rotate.timer (at login + every 30 min).
+# =============================================================================
+set -u
+
+STATE_DIR="$HOME/.cache/rice"
+CUR_FILE="$STATE_DIR/current-wallpaper"
+ACCENT_FILE="$STATE_DIR/current-accent"
+APPLET_SRC="$HOME/.config/plasma-org.kde.plasma.desktop-appletsrc"
+SCHEME="$(kreadconfig6 --file kdeglobals --group General --key ColorScheme 2>/dev/null)"
+SCHEME="${SCHEME:-DarkNeutral}"
+
+# ── 1. wallpaper sources: the slideshow SlidePaths + ~/Pictures/Wallpaper ────
+sources="$HOME/Pictures/Wallpaper"
+if [ -f "$APPLET_SRC" ]; then
+    while IFS= read -r p; do
+        p="${p#file://}"
+        [ -d "$p" ] && sources="$sources
+$p"
+    done < <(python3 - "$APPLET_SRC" <<'PY'
+import configparser, sys
+c = configparser.ConfigParser(strict=False, delimiters=('='))
+c.optionxform = str
+c.read(sys.argv[1])
+for s in c.sections():
+    if '[Wallpaper][org.kde.slideshow][General]' in s:
+        v = c.get(s, 'SlidePaths', fallback='')
+        for p in v.replace('file://', '').split(','):
+            p = p.strip()
+            if p:
+                print(p)
+PY
+)
+fi
+
+# ── 2. enumerate images ──────────────────────────────────────────────────────
+mapfile -t images < <(printf '%s\n' "$sources" | while IFS= read -r d; do
+    [ -d "$d" ] && find "$d" -maxdepth 1 -type f \
+        \( -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' -o -iname '*.webp' \) 2>/dev/null
+done | sort -u)
+[ "${#images[@]}" -gt 0 ] || { echo "rice-wallpaper-rotate: no wallpapers found"; exit 0; }
+
+# ── 3. pick a random one that differs from the current ───────────────────────
+cur="$(cat "$CUR_FILE" 2>/dev/null || true)"
+pool=()
+for img in "${images[@]}"; do
+    [ "$img" != "$cur" ] && pool+=("$img")
+done
+if [ "${#pool[@]}" -eq 0 ]; then
+    echo "rice-wallpaper-rotate: only one wallpaper available — nothing to rotate"
+    exit 0
+fi
+pick="${pool[RANDOM % ${#pool[@]}]}"
+
+# ── 4. apply via plasmashell scripting (org.kde.image) ───────────────────────
+qdbus6 org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript "
+var p = 'file://' + $(printf '%s' "$pick" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))');
+var ds = desktops();
+for (var i = 0; i < ds.length; i++) {
+    ds[i].wallpaperPlugin = 'org.kde.image';
+    ds[i].currentConfigGroup = ['Wallpaper', 'org.kde.image', 'General'];
+    ds[i].writeConfig('Image', p);
+}
+" >/dev/null 2>&1
+mkdir -p "$STATE_DIR"
+printf '%s' "$pick" > "$CUR_FILE"
+echo "rice-wallpaper-rotate: wallpaper → $(basename "$pick")"
+
+# ── 5. extract the most vibrant color region → accent color ─────────────────
+accent="$(python3 - "$pick" <<'PY'
+import sys, colorsys
+from PIL import Image
+img = Image.open(sys.argv[1]).convert('RGB').resize((160, 100))
+buckets = {}
+data = img.tobytes()
+for i in range(0, len(data), 3):
+    r, g, b = data[i], data[i+1], data[i+2]
+    h, s, v = colorsys.rgb_to_hsv(r/255, g/255, b/255)
+    if s > 0.28 and 0.18 < v < 0.97:          # colorful, not near-black/white
+        key = int(h * 36)                      # 10-degree hue buckets
+        w = s * v
+        e = buckets.setdefault(key, [0.0, 0.0, 0.0, 0.0])
+        e[0] += r*w; e[1] += g*w; e[2] += b*w; e[3] += w
+if not buckets:
+    print('')                                   # grayscale wallpaper → no change
+    sys.exit(0)
+best = max(buckets, key=lambda k: buckets[k][3])
+tr, tg, tb, w = buckets[best]
+r, g, b = tr/w, tg/w, tb/w
+h, s, v = colorsys.rgb_to_hsv(r/255, g/255, b/255)
+# tune for a dark theme: saturated and bright enough to pop
+s2 = min(1.0, max(s, 0.55))
+v2 = min(0.85, max(v, 0.60))
+r2, g2, b2 = (int(c*255) for c in colorsys.hsv_to_rgb(h, s2, v2))
+print(f'#{r2:02x}{g2:02x}{b2:02x}')
+PY
+)"
+
+# ── 6. apply the accent (keeps the dark scheme; only the highlight changes) ──
+if [ -n "$accent" ] && [ "$accent" != "$(cat "$ACCENT_FILE" 2>/dev/null)" ]; then
+    if plasma-apply-colorscheme "$SCHEME" --accent-color "$accent" >/dev/null 2>&1; then
+        printf '%s' "$accent" > "$ACCENT_FILE"
+        echo "rice-wallpaper-rotate: accent → $accent"
+    else
+        echo "rice-wallpaper-rotate: accent apply failed for $accent" >&2
+    fi
+fi

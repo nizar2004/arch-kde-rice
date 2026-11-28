@@ -1,0 +1,10 @@
+[Unit]
+Description=arch-kde-rice: rotate the wallpaper every 30 minutes
+
+[Timer]
+OnBootSec=3min
+OnUnitActiveSec=30min
+Persistent=true
+
+[Install]
+WantedBy=timers.target
